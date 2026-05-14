@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat Service — Arquitetura</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #161b22;
+      --surface2: #1c2230;
+      --border: #21262d;
+      --accent: #58a6ff;
+      --accent2: #3fb950;
+      --accent3: #d2a8ff;
+      --accent4: #ffa657;
+      --accent5: #ff7b72;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --tag-bg: #1f2937;
+    }
+
+    html { background: var(--bg); }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13.5px;
+      line-height: 1.7;
+      padding: 48px 64px;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    /* ── Header ── */
+    .cover {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 36px;
+      margin-bottom: 40px;
+    }
+    .cover-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+    .cover h1 {
+      font-size: 32px;
+      font-weight: 700;
+      line-height: 1.2;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+    .cover-sub {
+      color: var(--muted);
+      font-size: 14px;
+      max-width: 600px;
+    }
+    .cover-meta {
+      display: flex;
+      gap: 24px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+    .cover-meta span {
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .cover-meta strong { color: var(--text); font-weight: 500; }
+
+    /* ── Sections ── */
+    section { margin-bottom: 44px; }
+
+    h2 {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    h2 .num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px; height: 24px;
+      border-radius: 6px;
+      background: var(--surface2);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent3);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin: 20px 0 8px;
+    }
+
+    p { color: var(--muted); margin-bottom: 10px; }
+    p strong { color: var(--text); font-weight: 500; }
+
+    /* ── Tags ── */
+    .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+    .tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--tag-bg);
+      color: var(--muted);
+    }
+    .tag.blue  { color: var(--accent);  border-color: #1d3a5f; background: #0d2137; }
+    .tag.green { color: var(--accent2); border-color: #1a3d25; background: #0d2218; }
+    .tag.purple{ color: var(--accent3); border-color: #3b2a5a; background: #1e1530; }
+    .tag.orange{ color: var(--accent4); border-color: #4a2e10; background: #251608; }
+    .tag.red   { color: var(--accent5); border-color: #4a1e1e; background: #250d0d; }
+
+    /* ── Code / Diagram blocks ── */
+    pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      line-height: 1.65;
+      color: #c9d1d9;
+      overflow-x: auto;
+      margin-bottom: 16px;
+      white-space: pre;
+    }
+    pre .c  { color: var(--muted); }
+    pre .k  { color: var(--accent3); }
+    pre .s  { color: var(--accent2); }
+    pre .n  { color: var(--accent); }
+    pre .a  { color: var(--accent4); }
+
+    /* ── Cards ── */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 18px;
+    }
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .card p { font-size: 12.5px; margin: 0; }
+
+    /* ── Table ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16px;
+      font-size: 12.5px;
+    }
+    thead tr { border-bottom: 1px solid var(--border); }
+    th {
+      text-align: left;
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+    }
+    td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+      vertical-align: top;
+    }
+    td strong { color: var(--text); font-weight: 500; }
+    tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: var(--surface); }
+
+    /* ── Callout ── */
+    .callout {
+      border-left: 3px solid var(--accent);
+      background: var(--surface);
+      border-radius: 0 8px 8px 0;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+    }
+    .callout.green { border-color: var(--accent2); }
+    .callout.orange { border-color: var(--accent4); }
+    .callout p { margin: 0; font-size: 12.5px; }
+
+    /* ── Protocol comparison ── */
+    .proto-row {
+      display: grid;
+      grid-template-columns: 130px 1fr 1fr;
+      gap: 12px;
+      align-items: start;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 12.5px;
+    }
+    .proto-row:last-child { border-bottom: none; }
+    .proto-name { font-weight: 600; color: var(--text); }
+    .proto-col { color: var(--muted); }
+
+    /* ── Flow steps ── */
+    .flow {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .flow-step {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      padding: 12px 0;
+    }
+    .flow-num {
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: var(--accent);
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .flow-body { flex: 1; }
+    .flow-title { font-weight: 600; color: var(--text); font-size: 13px; margin-bottom: 3px; }
+    .flow-desc { color: var(--muted); font-size: 12.5px; }
+
+    /* ── Milestone timeline ── */
+    .milestone {
+      display: flex;
+      gap: 16px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .milestone:last-child { border-bottom: none; }
+    .ms-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: .06em;
+      white-space: nowrap;
+      align-self: flex-start;
+      margin-top: 2px;
+    }
+    .ms-badge.done    { background: #1a3d25; color: var(--accent2); }
+    .ms-badge.active  { background: #0d2137; color: var(--accent);  }
+    .ms-badge.planned { background: var(--surface2); color: var(--muted); }
+    .ms-body { flex: 1; }
+    .ms-title { font-weight: 600; color: var(--text); font-size: 13px; margin-bottom: 4px; }
+    .ms-items { color: var(--muted); font-size: 12px; }
+
+    /* ── Footer ── */
+    .footer {
+      margin-top: 56px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .footer span { font-size: 11px; color: var(--muted); }
+
+    @media print {
+      body { padding: 32px 40px; }
+      pre { page-break-inside: avoid; }
+      section { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════ COVER ══════════════════════ -->
+<div class="cover">
+  <div class="cover-label">Documento de Arquitetura — v1.0</div>
+  <h1>Chat Service</h1>
+  <p class="cover-sub">
+    Serviço de mensageria em tempo real — atômico, integrável e reutilizável como base de chat
+    em qualquer aplicação do ecossistema pessoal.
+  </p>
+  <div class="cover-meta">
+    <span>Autor <strong>Emanuel Martins</strong></span>
+    <span>Data <strong>Maio 2026</strong></span>
+    <span>Status <strong>Planejamento</strong></span>
+    <span>Contexto <strong>financial_control ecosystem</strong></span>
+  </div>
+</div>
+
+
+<!-- ══════════════════════ 1 · CONTEXTO ══════════════════════ -->
+<section>
+  <h2><span class="num">1</span> Contexto e Motivação</h2>
+
+  <p>
+    O <strong>financial_control</strong> já é um sistema orientado a chat: o usuário envia mensagens
+    em linguagem natural via Telegram ou Zulip e o sistema responde com confirmações de transações.
+    A dependência de plataformas externas (Telegram bane contas, Zulip tem limitações de hospedagem)
+    cria um ponto frágil na arquitetura.
+  </p>
+  <p>
+    O objetivo deste serviço é construir um <strong>cliente nativo de chat</strong> que:
+  </p>
+
+  <div class="card-grid" style="margin-top:16px">
+    <div class="card">
+      <div class="card-title"><span class="card-dot" style="background:#58a6ff"></span>Atômico</div>
+      <p>Funciona de forma standalone, sem depender de nenhum outro serviço do ecossistema.</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="card-dot" style="background:#3fb950"></span>Integrável</div>
+      <p>Expõe contratos bem definidos (gRPC + eventos RabbitMQ) para ser consumido por qualquer projeto.</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="card-dot" style="background:#d2a8ff"></span>Reutilizável</div>
+      <p>Base de chat para qualquer aplicação futura do ecossistema, substituindo Telegram/Zulip.</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="card-dot" style="background:#ffa657"></span>Nível de mercado</div>
+      <p>Arquitetura de gateway com multiplexing, sequence numbers, delivery guarantees e presence tracking.</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════ 2 · ANÁLISE DE PROTOCOLOS ══════════════════════ -->
+<section>
+  <h2><span class="num">2</span> Análise de Protocolos</h2>
+
+  <p>
+    WebSocket "pelado" com JSON é suficiente tecnicamente, mas não demonstra engenharia de sistemas.
+    O que diferencia uma plataforma de mercado é o que acontece <strong>sobre</strong> o transporte.
+  </p>
+
+  <div style="margin-top:14px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:6px 18px;">
+    <div class="proto-row">
+      <div class="proto-name">XMPP</div>
+      <div class="proto-col"><strong style="color:var(--text)">Base:</strong> WhatsApp foi construído em cima. Federado, maduro, extensível via XEPs.</div>
+      <div class="proto-col"><strong style="color:var(--text)">Decisão:</strong> XML verboso, ecossistema parado desde 2015. Não agrega ao portfólio.</div>
+    </div>
+    <div class="proto-row">
+      <div class="proto-name">Matrix</div>
+      <div class="proto-col"><strong style="color:var(--text)">Base:</strong> Protocolo moderno, federado, E2E encryption nativo. Usado por governos e NASA.</div>
+      <div class="proto-col"><strong style="color:var(--text)">Decisão:</strong> Implementar homeserver do zero = 6+ meses. Usar SDK existente elimina o aprendizado.</div>
+    </div>
+    <div class="proto-row">
+      <div class="proto-name">MTProto</div>
+      <div class="proto-col"><strong style="color:var(--text)">Base:</strong> Protocolo próprio do Telegram. Binário, eficiente, criptografia customizada.</div>
+      <div class="proto-col"><strong style="color:var(--text)">Decisão:</strong> Proprietário e complexo demais. Fora de escopo.</div>
+    </div>
+    <div class="proto-row">
+      <div class="proto-name">Discord Gateway</div>
+      <div class="proto-col"><strong style="color:var(--text)">Base:</strong> WebSocket multiplexado + Protobuf + heartbeats + sequence numbers. Erlang/OTP backend.</div>
+      <div class="proto-col"><strong style="color:var(--text)">Decisão:</strong> <span style="color:var(--accent2)">Referência principal.</span> Implementável com Phoenix Channels.</div>
+    </div>
+    <div class="proto-row">
+      <div class="proto-name">Phoenix Channels</div>
+      <div class="proto-col"><strong style="color:var(--text)">Base:</strong> O que inspirou o modelo do Discord. Multiplexing nativo, Presence como CRDT distribuído.</div>
+      <div class="proto-col"><strong style="color:var(--text)">Decisão:</strong> <span style="color:var(--accent)">Stack escolhida.</span> Já presente no ecossistema (messenger, mailer).</div>
+    </div>
+  </div>
+
+  <div class="callout" style="margin-top:16px">
+    <p>
+      O que torna uma arquitetura de chat "nível de mercado" não é o protocolo de transporte —
+      é a <strong>engenharia sobre ele</strong>: delivery guarantees, sequence numbers, offline queue,
+      presence tracking e fan-out via message broker. Essas são as peças que compõem o Discord,
+      Slack e similares.
+    </p>
+  </div>
+</section>
+
+
+<!-- ══════════════════════ 3 · ARQUITETURA ══════════════════════ -->
+<section>
+  <h2><span class="num">3</span> Arquitetura do Serviço</h2>
+
+  <h3>Visão Geral</h3>
+<pre>
+<span class="c">┌─────────────────────────────────────────────────────────────────┐</span>
+<span class="c">│                       CHAT SERVICE                              │</span>
+<span class="c">│                                                                 │</span>
+<span class="c">│  WebSocket (Phoenix Channels)                                   │</span>
+<span class="c">│  ┌──────────────────────────────────────────────────────────┐   │</span>
+<span class="c">│  │  Connection Pool (Erlang processes, 1 process/conexão)   │   │</span>
+<span class="c">│  │  • Heartbeat / reconnect automático                      │   │</span>
+<span class="c">│  │  • Sequence numbers por canal                            │   │</span>
+<span class="c">│  │  • Ack explícito (at-least-once delivery)                │   │</span>
+<span class="c">│  └────────────────────┬─────────────────────────────────────┘   │</span>
+<span class="c">│                       │                                         │</span>
+<span class="c">│           ┌───────────┼───────────┐                             │</span>
+<span class="c">│           ▼           ▼           ▼                             │</span>
+<span class="c">│     [Room Manager] [Presence]  [Fan-out]                        │</span>
+<span class="c">│     canais/salas   CRDT distrib  RabbitMQ exchange              │</span>
+<span class="c">│           │                         │                           │</span>
+<span class="c">│           ▼                         ▼                           │</span>
+<span class="c">│     [CockroachDB]            [Offline Queue]                    │</span>
+<span class="c">│     histórico de msgs        entrega quando reconectar          │</span>
+<span class="c">└─────────────────────────────────────────────────────────────────┘</span>
+          │                               │
+          │ gRPC                          │ RabbitMQ events
+          ▼                               ▼
+  financial_control               financial_control
+  (gateway / tenant)              (transaction-extractor
+                                   → messenger → chat)
+</pre>
+
+  <h3>Componentes Internos</h3>
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title"><span class="card-dot" style="background:#58a6ff"></span>Gateway WS</div>
+      <p>Aceita conexões, autentica via JWT (mesmo issuer do ecossistema), distribui para canais. Um processo Erlang por conexão.</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="card-dot" style="background:#3fb950"></span>Room Manager</div>
+      <p>Gerencia canais (workspace channels, DMs, broadcast). Persiste metadados no CockroachDB.</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="card-dot" style="background:#d2a8ff"></span>Presence</div>
+      <p>Phoenix Presence — CRDT distribuído sem coordenação central. Rastreia quem está online em cada canal.</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="card-dot" style="background:#ffa657"></span>Fan-out Engine</div>
+      <p>Publica mensagens no RabbitMQ exchange. Consumidores (financial_control, outros) assinam filas próprias.</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="card-dot" style="background:#ff7b72"></span>Offline Queue</div>
+      <p>Mensagens destinadas a usuários desconectados ficam na fila. Entregue em ordem na reconexão via sequence number.</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="card-dot" style="background:#58a6ff"></span>Message Store</div>
+      <p>CockroachDB com schema por tenant (herda isolamento do financial_control). Histórico paginado via cursor.</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════ 4 · PROTOCOLO DE MENSAGENS ══════════════════════ -->
+<section>
+  <h2><span class="num">4</span> Protocolo de Mensagens</h2>
+
+  <p>
+    Mensagens trafegam como <strong>Protobuf sobre WebSocket</strong> — não JSON puro.
+    Isso garante schema versionado, serialização binária eficiente e contratos explícitos entre cliente e servidor.
+  </p>
+
+  <h3>Estrutura do Frame</h3>
+<pre>
+<span class="c">// messages.proto</span>
+
+<span class="k">message</span> <span class="n">ClientFrame</span> {
+  <span class="k">uint64</span>   seq       = 1;  <span class="c">// número de sequência crescente por conexão</span>
+  <span class="k">string</span>   channel   = 2;  <span class="c">// "workspace:uuid" | "dm:uuid" | "broadcast"</span>
+  <span class="k">oneof</span>    payload {
+    <span class="n">SendMessage</span>    send    = 3;
+    <span class="n">AckMessage</span>     ack     = 4;
+    <span class="n">TypingEvent</span>    typing  = 5;
+    <span class="n">PresenceQuery</span>  presence = 6;
+  }
+}
+
+<span class="k">message</span> <span class="n">ServerFrame</span> {
+  <span class="k">uint64</span>   seq       = 1;  <span class="c">// seq do servidor — cliente usa para detectar gap</span>
+  <span class="k">string</span>   channel   = 2;
+  <span class="k">oneof</span>    payload {
+    <span class="n">Message</span>        message  = 3;
+    <span class="n">Ack</span>            ack      = 4;
+    <span class="n">PresenceEvent</span>  presence = 5;
+    <span class="n">SystemEvent</span>    system   = 6;  <span class="c">// heartbeat, reconnect hint</span>
+  }
+}
+</pre>
+
+  <h3>Delivery Guarantees</h3>
+  <div class="callout green">
+    <p>
+      Cada mensagem tem um <strong>seq</strong> crescente por canal. O cliente rastreia o último seq recebido.
+      Ao reconectar, envia <code>resume: { channel, last_seq }</code> — o servidor entrega as mensagens perdidas
+      em ordem antes de continuar o stream normal. Isso é exatamente o modelo do Discord Gateway v10.
+    </p>
+  </div>
+</section>
+
+
+<!-- ══════════════════════ 5 · INTEGRAÇÃO COM FINANCIAL_CONTROL ══════════════════════ -->
+<section>
+  <h2><span class="num">5</span> Integração com financial_control</h2>
+
+  <h3>Nova Plataforma: CHAT_NATIVE</h3>
+  <p>
+    O <code>tenant service</code> do financial_control já suporta múltiplas plataformas (<code>TELEGRAM</code>, <code>ZULIP</code>).
+    A integração adiciona <code>CHAT_NATIVE</code> como nova plataforma — o pipeline existente não muda.
+  </p>
+
+<pre>
+<span class="c">-- tenant service: nenhuma alteração na lógica, só novo enum value</span>
+<span class="k">ALTER TYPE</span> platform_enum <span class="k">ADD VALUE</span> <span class="s">'CHAT_NATIVE'</span>;
+
+<span class="c">-- workspace member identificado pelo user_id nativo (não platform_id externo)</span>
+<span class="k">INSERT INTO</span> workspace_members (workspace_id, platform, platform_id, user_id)
+<span class="k">VALUES</span> ($1, <span class="s">'CHAT_NATIVE'</span>, $user_id, $user_id);
+</pre>
+
+  <h3>Fluxo de Mensagem Financeira</h3>
+  <div class="flow">
+    <div class="flow-step">
+      <div class="flow-num">1</div>
+      <div class="flow-body">
+        <div class="flow-title">Usuário envia mensagem no chat nativo</div>
+        <div class="flow-desc">Frontend Angular → WebSocket → chat service recebe o texto</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">2</div>
+      <div class="flow-body">
+        <div class="flow-title">Chat service publica evento no RabbitMQ</div>
+        <div class="flow-desc">Exchange <code>chat.message.inbound</code> com workspaceId, userId, text, requestId</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">3</div>
+      <div class="flow-body">
+        <div class="flow-title">Gateway do financial_control consome o evento</div>
+        <div class="flow-desc">Identifica plataforma CHAT_NATIVE, valida membership, enfileira em <code>messages.inbound</code></div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">4</div>
+      <div class="flow-body">
+        <div class="flow-title">Pipeline existente processa sem alteração</div>
+        <div class="flow-desc">transaction-extractor → LLM → ledger (CockroachDB) → <code>automatedmessage.outbound</code></div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">5</div>
+      <div class="flow-body">
+        <div class="flow-title">Chat service recebe confirmação</div>
+        <div class="flow-desc">Consome <code>automatedmessage.outbound</code> para CHAT_NATIVE, entrega via WebSocket ao usuário</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout orange" style="margin-top:16px">
+    <p>
+      O <strong>messenger service</strong> (Elixir) existente continua sendo responsável por Telegram e Zulip.
+      O chat service adiciona um novo consumer no mesmo exchange — sem modificar código existente.
+    </p>
+  </div>
+</section>
+
+
+<!-- ══════════════════════ 6 · STACK E ESTRUTURA ══════════════════════ -->
+<section>
+  <h2><span class="num">6</span> Stack e Estrutura do Repositório</h2>
+
+  <div class="tags">
+    <span class="tag purple">Elixir ~1.17</span>
+    <span class="tag purple">Phoenix 1.7</span>
+    <span class="tag purple">Phoenix Channels</span>
+    <span class="tag purple">Phoenix Presence</span>
+    <span class="tag blue">CockroachDB</span>
+    <span class="tag orange">RabbitMQ</span>
+    <span class="tag green">Protobuf</span>
+    <span class="tag green">gRPC</span>
+    <span class="tag">Docker</span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Decisão</th>
+        <th>Escolha</th>
+        <th>Justificativa</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Runtime</td>
+        <td><strong>Elixir / Erlang OTP</strong></td>
+        <td>Já presente no ecossistema. 1 processo leve por conexão WS — escala natural.</td>
+      </tr>
+      <tr>
+        <td>Real-time</td>
+        <td><strong>Phoenix Channels</strong></td>
+        <td>Multiplexing nativo, o mesmo modelo que inspirou o Discord Gateway.</td>
+      </tr>
+      <tr>
+        <td>Serialização</td>
+        <td><strong>Protobuf</strong></td>
+        <td>Schema versionado, binário, contratos explícitos entre cliente e servidor.</td>
+      </tr>
+      <tr>
+        <td>Presence</td>
+        <td><strong>Phoenix Presence</strong></td>
+        <td>CRDT distribuído — sem coordenação central, consistência eventual.</td>
+      </tr>
+      <tr>
+        <td>Banco de dados</td>
+        <td><strong>CockroachDB</strong></td>
+        <td>Mesmo banco do ecossistema. Schema isolado por tenant (herda padrão do ledger).</td>
+      </tr>
+      <tr>
+        <td>Fan-out</td>
+        <td><strong>RabbitMQ</strong></td>
+        <td>Já presente. Exchange topic para routing por plataforma/workspace.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Estrutura de Diretórios</h3>
+<pre>
+chat/
+├── lib/
+│   └── chat/
+│       ├── application.ex           <span class="c"># supervision tree</span>
+│       ├── channels/
+│       │   ├── user_socket.ex       <span class="c"># autenticação JWT na conexão</span>
+│       │   ├── room_channel.ex      <span class="c"># canal workspace/DM</span>
+│       │   └── system_channel.ex   <span class="c"># heartbeat, eventos de sistema</span>
+│       ├── presence.ex              <span class="c"># Phoenix.Presence CRDT</span>
+│       ├── rooms/                   <span class="c"># Room Manager (CRUD de canais)</span>
+│       ├── messages/                <span class="c"># Message Store (persistência)</span>
+│       ├── delivery/
+│       │   ├── fanout.ex            <span class="c"># publica no RabbitMQ</span>
+│       │   └── offline_queue.ex     <span class="c"># fila para usuários desconectados</span>
+│       ├── integrations/
+│       │   └── financial_control.ex <span class="c"># consumer + publisher para o ecossistema</span>
+│       └── proto/                   <span class="c"># definições Protobuf geradas</span>
+├── priv/
+│   └── migrations/                  <span class="c"># schema chat no CockroachDB</span>
+├── proto/
+│   └── messages.proto               <span class="c"># definição dos frames</span>
+├── config/
+├── mix.exs
+└── docker-compose.yml               <span class="c"># standalone: chat + CockroachDB + RabbitMQ</span>
+</pre>
+</section>
+
+
+<!-- ══════════════════════ 7 · CONTRATOS DE INTEGRAÇÃO ══════════════════════ -->
+<section>
+  <h2><span class="num">7</span> Contratos de Integração</h2>
+
+  <p>
+    Por ser um serviço atômico, o chat expõe contratos estáveis que qualquer projeto do ecossistema pode consumir.
+  </p>
+
+  <h3>RabbitMQ — Eventos Publicados</h3>
+  <table>
+    <thead><tr><th>Exchange</th><th>Routing Key</th><th>Payload</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>chat.message.inbound</code></td>
+        <td><code>workspace.{id}</code></td>
+        <td>workspaceId, userId, text, requestId, receivedAt</td>
+      </tr>
+      <tr>
+        <td><code>chat.presence</code></td>
+        <td><code>workspace.{id}.presence</code></td>
+        <td>userId, status (online/offline), channelId</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>RabbitMQ — Eventos Consumidos</h3>
+  <table>
+    <thead><tr><th>Queue</th><th>Source</th><th>Ação</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>chat.notifications.inbound</code></td>
+        <td>financial_control / qualquer serviço</td>
+        <td>Entrega mensagem ao usuário via WebSocket (ou offline queue)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>gRPC — API de Administração</h3>
+<pre>
+<span class="k">service</span> <span class="n">ChatAdmin</span> {
+  <span class="k">rpc</span> <span class="n">CreateRoom</span>      (CreateRoomRequest)      <span class="k">returns</span> (Room);
+  <span class="k">rpc</span> <span class="n">AddMember</span>       (AddMemberRequest)       <span class="k">returns</span> (Member);
+  <span class="k">rpc</span> <span class="n">GetHistory</span>      (HistoryRequest)         <span class="k">returns</span> (stream Message);
+  <span class="k">rpc</span> <span class="n">SendSystemMsg</span>   (SystemMessageRequest)   <span class="k">returns</span> (Ack);
+}
+</pre>
+</section>
+
+
+<!-- ══════════════════════ 8 · ROADMAP ══════════════════════ -->
+<section>
+  <h2><span class="num">8</span> Roadmap de Implementação</h2>
+
+  <div class="milestone">
+    <span class="ms-badge active">M0</span>
+    <div class="ms-body">
+      <div class="ms-title">Fundação</div>
+      <div class="ms-items">Projeto Phoenix, supervisão OTP, CockroachDB schema, Docker standalone, CI básico</div>
+    </div>
+  </div>
+  <div class="milestone">
+    <span class="ms-badge planned">M1</span>
+    <div class="ms-body">
+      <div class="ms-title">Conexão e Autenticação</div>
+      <div class="ms-items">UserSocket com JWT, Phoenix Channels básico, Protobuf encoding/decoding, heartbeat</div>
+    </div>
+  </div>
+  <div class="milestone">
+    <span class="ms-badge planned">M2</span>
+    <div class="ms-body">
+      <div class="ms-title">Mensagens e Persistência</div>
+      <div class="ms-items">Send/receive, sequence numbers, Message Store no CockroachDB, histórico paginado</div>
+    </div>
+  </div>
+  <div class="milestone">
+    <span class="ms-badge planned">M3</span>
+    <div class="ms-body">
+      <div class="ms-title">Delivery Guarantees</div>
+      <div class="ms-items">Ack explícito, offline queue, replay na reconexão, at-least-once garantido</div>
+    </div>
+  </div>
+  <div class="milestone">
+    <span class="ms-badge planned">M4</span>
+    <div class="ms-body">
+      <div class="ms-title">Presence e Rooms</div>
+      <div class="ms-items">Phoenix Presence, room management, typing indicators, online/offline status</div>
+    </div>
+  </div>
+  <div class="milestone">
+    <span class="ms-badge planned">M5</span>
+    <div class="ms-body">
+      <div class="ms-title">Integração financial_control</div>
+      <div class="ms-items">Plataforma CHAT_NATIVE no tenant service, fan-out RabbitMQ, consumer de notificações</div>
+    </div>
+  </div>
+  <div class="milestone">
+    <span class="ms-badge planned">M6</span>
+    <div class="ms-body">
+      <div class="ms-title">Frontend</div>
+      <div class="ms-items">Feature module no financial_control_admin_system (Angular), componente de chat, integração WS</div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════ FOOTER ══════════════════════ -->
+<div class="footer">
+  <span>Chat Service — Documento de Arquitetura v1.0</span>
+  <span>Emanuel Martins · Maio 2026</span>
+</div>
+
+</body>
+</html>
