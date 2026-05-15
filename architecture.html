@@ -236,32 +236,6 @@
     .proto-name { font-weight: 600; color: var(--text); }
     .proto-col { color: var(--muted); }
 
-    /* ── Flow steps ── */
-    .flow {
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-    }
-    .flow-step {
-      display: flex;
-      gap: 16px;
-      align-items: flex-start;
-      padding: 12px 0;
-    }
-    .flow-num {
-      width: 26px; height: 26px;
-      border-radius: 50%;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 700; color: var(--accent);
-      flex-shrink: 0;
-      margin-top: 1px;
-    }
-    .flow-body { flex: 1; }
-    .flow-title { font-weight: 600; color: var(--text); font-size: 13px; margin-bottom: 3px; }
-    .flow-desc { color: var(--muted); font-size: 12.5px; }
-
     /* ── Milestone timeline ── */
     .milestone {
       display: flex;
@@ -311,17 +285,16 @@
 
 <!-- ══════════════════════ COVER ══════════════════════ -->
 <div class="cover">
-  <div class="cover-label">Documento de Arquitetura — v1.0</div>
+  <div class="cover-label">Documento de Arquitetura — v1.1</div>
   <h1>Chat Service</h1>
   <p class="cover-sub">
-    Serviço de mensageria em tempo real — atômico, integrável e reutilizável como base de chat
-    em qualquer aplicação do ecossistema pessoal.
+    Serviço de mensageria em tempo real — standalone, genérico e integrável por qualquer sistema
+    via contratos bem definidos.
   </p>
   <div class="cover-meta">
     <span>Autor <strong>Emanuel Martins</strong></span>
     <span>Data <strong>Maio 2026</strong></span>
     <span>Status <strong>Planejamento</strong></span>
-    <span>Contexto <strong>financial_control ecosystem</strong></span>
   </div>
 </div>
 
@@ -331,19 +304,16 @@
   <h2><span class="num">1</span> Contexto e Motivação</h2>
 
   <p>
-    O <strong>financial_control</strong> já é um sistema orientado a chat: o usuário envia mensagens
-    em linguagem natural via Telegram ou Zulip e o sistema responde com confirmações de transações.
-    A dependência de plataformas externas (Telegram bane contas, Zulip tem limitações de hospedagem)
-    cria um ponto frágil na arquitetura.
-  </p>
-  <p>
-    O objetivo deste serviço é construir um <strong>cliente nativo de chat</strong> que:
+    O objetivo deste serviço é construir uma <strong>base de chat reutilizável</strong>: um núcleo pequeno
+    e autossuficiente que pode ser hospedado e integrado em qualquer projeto que precise de mensageria em
+    tempo real. Não é dedicado a nenhum sistema específico — expõe contratos estáveis e qualquer
+    integrador os consome.
   </p>
 
   <div class="card-grid" style="margin-top:16px">
     <div class="card">
       <div class="card-title"><span class="card-dot" style="background:#58a6ff"></span>Atômico</div>
-      <p>Funciona de forma standalone, sem depender de nenhum outro serviço do ecossistema.</p>
+      <p>Funciona de forma standalone, sem depender de nenhum outro serviço. Sobe sozinho com Docker.</p>
     </div>
     <div class="card">
       <div class="card-title"><span class="card-dot" style="background:#3fb950"></span>Integrável</div>
@@ -351,7 +321,7 @@
     </div>
     <div class="card">
       <div class="card-title"><span class="card-dot" style="background:#d2a8ff"></span>Reutilizável</div>
-      <p>Base de chat para qualquer aplicação futura do ecossistema, substituindo Telegram/Zulip.</p>
+      <p>Base de chat para qualquer aplicação futura — sempre que um projeto precisar de chat, esse é o serviço.</p>
     </div>
     <div class="card">
       <div class="card-title"><span class="card-dot" style="background:#ffa657"></span>Nível de mercado</div>
@@ -394,7 +364,7 @@
     <div class="proto-row">
       <div class="proto-name">Phoenix Channels</div>
       <div class="proto-col"><strong style="color:var(--text)">Base:</strong> O que inspirou o modelo do Discord. Multiplexing nativo, Presence como CRDT distribuído.</div>
-      <div class="proto-col"><strong style="color:var(--text)">Decisão:</strong> <span style="color:var(--accent)">Stack escolhida.</span> Já presente no ecossistema (messenger, mailer).</div>
+      <div class="proto-col"><strong style="color:var(--text)">Decisão:</strong> <span style="color:var(--accent)">Stack escolhida.</span> O BEAM é a arquitetura — presença CRDT, isolamento de conexão e tolerância a falha são propriedades estruturais do runtime.</div>
     </div>
   </div>
 
@@ -429,29 +399,28 @@
 <span class="c">│           ┌───────────┼───────────┐                             │</span>
 <span class="c">│           ▼           ▼           ▼                             │</span>
 <span class="c">│     [Room Manager] [Presence]  [Fan-out]                        │</span>
-<span class="c">│     canais/salas   CRDT distrib  RabbitMQ exchange              │</span>
+<span class="c">│     PostgreSQL     CRDT distrib  RabbitMQ exchange              │</span>
 <span class="c">│           │                         │                           │</span>
 <span class="c">│           ▼                         ▼                           │</span>
-<span class="c">│     [CockroachDB]            [Offline Queue]                    │</span>
+<span class="c">│      [ScyllaDB]              [Offline Queue]                    │</span>
 <span class="c">│     histórico de msgs        entrega quando reconectar          │</span>
 <span class="c">└─────────────────────────────────────────────────────────────────┘</span>
           │                               │
           │ gRPC                          │ RabbitMQ events
           ▼                               ▼
-  financial_control               financial_control
-  (gateway / tenant)              (transaction-extractor
-                                   → messenger → chat)
+   qualquer sistema               qualquer sistema
+   integrador                     integrador
 </pre>
 
   <h3>Componentes Internos</h3>
   <div class="card-grid">
     <div class="card">
       <div class="card-title"><span class="card-dot" style="background:#58a6ff"></span>Gateway WS</div>
-      <p>Aceita conexões, autentica via JWT (mesmo issuer do ecossistema), distribui para canais. Um processo Erlang por conexão.</p>
+      <p>Aceita conexões, autentica via JWT, distribui para canais. Um processo Erlang por conexão.</p>
     </div>
     <div class="card">
       <div class="card-title"><span class="card-dot" style="background:#3fb950"></span>Room Manager</div>
-      <p>Gerencia canais (workspace channels, DMs, broadcast). Persiste metadados no CockroachDB.</p>
+      <p>Gerencia canais (workspace channels, DMs, broadcast). Persiste metadados e membros no PostgreSQL.</p>
     </div>
     <div class="card">
       <div class="card-title"><span class="card-dot" style="background:#d2a8ff"></span>Presence</div>
@@ -459,15 +428,15 @@
     </div>
     <div class="card">
       <div class="card-title"><span class="card-dot" style="background:#ffa657"></span>Fan-out Engine</div>
-      <p>Publica mensagens no RabbitMQ exchange. Consumidores (financial_control, outros) assinam filas próprias.</p>
+      <p>Publica mensagens no RabbitMQ exchange. Qualquer sistema integrador assina sua própria fila.</p>
     </div>
     <div class="card">
       <div class="card-title"><span class="card-dot" style="background:#ff7b72"></span>Offline Queue</div>
-      <p>Mensagens destinadas a usuários desconectados ficam na fila. Entregue em ordem na reconexão via sequence number.</p>
+      <p>Mensagens destinadas a usuários desconectados ficam na fila. Entregues em ordem na reconexão via sequence number.</p>
     </div>
     <div class="card">
       <div class="card-title"><span class="card-dot" style="background:#58a6ff"></span>Message Store</div>
-      <p>CockroachDB com schema por tenant (herda isolamento do financial_control). Histórico paginado via cursor.</p>
+      <p>ScyllaDB particionado por channel_id, clustering por seq. Histórico paginado via cursor — append-only, alta escrita.</p>
     </div>
   </div>
 </section>
@@ -520,83 +489,18 @@
 </section>
 
 
-<!-- ══════════════════════ 5 · INTEGRAÇÃO COM FINANCIAL_CONTROL ══════════════════════ -->
+<!-- ══════════════════════ 5 · STACK E ESTRUTURA ══════════════════════ -->
 <section>
-  <h2><span class="num">5</span> Integração com financial_control</h2>
-
-  <h3>Nova Plataforma: CHAT_NATIVE</h3>
-  <p>
-    O <code>tenant service</code> do financial_control já suporta múltiplas plataformas (<code>TELEGRAM</code>, <code>ZULIP</code>).
-    A integração adiciona <code>CHAT_NATIVE</code> como nova plataforma — o pipeline existente não muda.
-  </p>
-
-<pre>
-<span class="c">-- tenant service: nenhuma alteração na lógica, só novo enum value</span>
-<span class="k">ALTER TYPE</span> platform_enum <span class="k">ADD VALUE</span> <span class="s">'CHAT_NATIVE'</span>;
-
-<span class="c">-- workspace member identificado pelo user_id nativo (não platform_id externo)</span>
-<span class="k">INSERT INTO</span> workspace_members (workspace_id, platform, platform_id, user_id)
-<span class="k">VALUES</span> ($1, <span class="s">'CHAT_NATIVE'</span>, $user_id, $user_id);
-</pre>
-
-  <h3>Fluxo de Mensagem Financeira</h3>
-  <div class="flow">
-    <div class="flow-step">
-      <div class="flow-num">1</div>
-      <div class="flow-body">
-        <div class="flow-title">Usuário envia mensagem no chat nativo</div>
-        <div class="flow-desc">Frontend Angular → WebSocket → chat service recebe o texto</div>
-      </div>
-    </div>
-    <div class="flow-step">
-      <div class="flow-num">2</div>
-      <div class="flow-body">
-        <div class="flow-title">Chat service publica evento no RabbitMQ</div>
-        <div class="flow-desc">Exchange <code>chat.message.inbound</code> com workspaceId, userId, text, requestId</div>
-      </div>
-    </div>
-    <div class="flow-step">
-      <div class="flow-num">3</div>
-      <div class="flow-body">
-        <div class="flow-title">Gateway do financial_control consome o evento</div>
-        <div class="flow-desc">Identifica plataforma CHAT_NATIVE, valida membership, enfileira em <code>messages.inbound</code></div>
-      </div>
-    </div>
-    <div class="flow-step">
-      <div class="flow-num">4</div>
-      <div class="flow-body">
-        <div class="flow-title">Pipeline existente processa sem alteração</div>
-        <div class="flow-desc">transaction-extractor → LLM → ledger (CockroachDB) → <code>automatedmessage.outbound</code></div>
-      </div>
-    </div>
-    <div class="flow-step">
-      <div class="flow-num">5</div>
-      <div class="flow-body">
-        <div class="flow-title">Chat service recebe confirmação</div>
-        <div class="flow-desc">Consome <code>automatedmessage.outbound</code> para CHAT_NATIVE, entrega via WebSocket ao usuário</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="callout orange" style="margin-top:16px">
-    <p>
-      O <strong>messenger service</strong> (Elixir) existente continua sendo responsável por Telegram e Zulip.
-      O chat service adiciona um novo consumer no mesmo exchange — sem modificar código existente.
-    </p>
-  </div>
-</section>
-
-
-<!-- ══════════════════════ 6 · STACK E ESTRUTURA ══════════════════════ -->
-<section>
-  <h2><span class="num">6</span> Stack e Estrutura do Repositório</h2>
+  <h2><span class="num">5</span> Stack e Estrutura do Repositório</h2>
 
   <div class="tags">
     <span class="tag purple">Elixir ~1.17</span>
     <span class="tag purple">Phoenix 1.7</span>
     <span class="tag purple">Phoenix Channels</span>
     <span class="tag purple">Phoenix Presence</span>
-    <span class="tag blue">CockroachDB</span>
+    <span class="tag blue">ScyllaDB</span>
+    <span class="tag red">Redis</span>
+    <span class="tag blue">PostgreSQL</span>
     <span class="tag orange">RabbitMQ</span>
     <span class="tag green">Protobuf</span>
     <span class="tag green">gRPC</span>
@@ -615,7 +519,7 @@
       <tr>
         <td>Runtime</td>
         <td><strong>Elixir / Erlang OTP</strong></td>
-        <td>Já presente no ecossistema. 1 processo leve por conexão WS — escala natural.</td>
+        <td>O BEAM é a arquitetura — presença CRDT, isolamento de conexão e tolerância a falha são propriedades estruturais do runtime, não bibliotecas.</td>
       </tr>
       <tr>
         <td>Real-time</td>
@@ -633,14 +537,24 @@
         <td>CRDT distribuído — sem coordenação central, consistência eventual.</td>
       </tr>
       <tr>
-        <td>Banco de dados</td>
-        <td><strong>CockroachDB</strong></td>
-        <td>Mesmo banco do ecossistema. Schema isolado por tenant (herda padrão do ledger).</td>
+        <td>Histórico de mensagens</td>
+        <td><strong>ScyllaDB</strong></td>
+        <td>Wide-column, time-series nativo. Partition key: channel_id, clustering key: seq. Alta escrita, leitura paginada por cursor. Cassandra moderno em C++.</td>
+      </tr>
+      <tr>
+        <td>Presença e cache</td>
+        <td><strong>Redis</strong></td>
+        <td>TTL natural para eventos efêmeros (typing, last_seen). Pub/sub para notificações de presença entre nós.</td>
+      </tr>
+      <tr>
+        <td>Metadados de rooms</td>
+        <td><strong>PostgreSQL</strong></td>
+        <td>CRUD relacional — canais, membros, permissões. Não é time-series, não precisa de ScyllaDB.</td>
       </tr>
       <tr>
         <td>Fan-out</td>
         <td><strong>RabbitMQ</strong></td>
-        <td>Já presente. Exchange topic para routing por plataforma/workspace.</td>
+        <td>Exchange topic para routing genérico por workspace/canal. Integradores assinam filas próprias.</td>
       </tr>
     </tbody>
   </table>
@@ -656,31 +570,29 @@ chat/
 │       │   ├── room_channel.ex      <span class="c"># canal workspace/DM</span>
 │       │   └── system_channel.ex   <span class="c"># heartbeat, eventos de sistema</span>
 │       ├── presence.ex              <span class="c"># Phoenix.Presence CRDT</span>
-│       ├── rooms/                   <span class="c"># Room Manager (CRUD de canais)</span>
-│       ├── messages/                <span class="c"># Message Store (persistência)</span>
+│       ├── rooms/                   <span class="c"># Room Manager (CRUD de canais — PostgreSQL)</span>
+│       ├── messages/                <span class="c"># Message Store (ScyllaDB)</span>
 │       ├── delivery/
 │       │   ├── fanout.ex            <span class="c"># publica no RabbitMQ</span>
 │       │   └── offline_queue.ex     <span class="c"># fila para usuários desconectados</span>
-│       ├── integrations/
-│       │   └── financial_control.ex <span class="c"># consumer + publisher para o ecossistema</span>
 │       └── proto/                   <span class="c"># definições Protobuf geradas</span>
 ├── priv/
-│   └── migrations/                  <span class="c"># schema chat no CockroachDB</span>
+│   └── migrations/                  <span class="c"># schema PostgreSQL (rooms, members)</span>
 ├── proto/
 │   └── messages.proto               <span class="c"># definição dos frames</span>
 ├── config/
 ├── mix.exs
-└── docker-compose.yml               <span class="c"># standalone: chat + CockroachDB + RabbitMQ</span>
+└── docker-compose.yml               <span class="c"># standalone: chat + ScyllaDB + Redis + PostgreSQL + RabbitMQ</span>
 </pre>
 </section>
 
 
-<!-- ══════════════════════ 7 · CONTRATOS DE INTEGRAÇÃO ══════════════════════ -->
+<!-- ══════════════════════ 6 · CONTRATOS DE INTEGRAÇÃO ══════════════════════ -->
 <section>
-  <h2><span class="num">7</span> Contratos de Integração</h2>
+  <h2><span class="num">6</span> Contratos de Integração</h2>
 
   <p>
-    Por ser um serviço atômico, o chat expõe contratos estáveis que qualquer projeto do ecossistema pode consumir.
+    Por ser um serviço atômico, o chat expõe contratos estáveis que qualquer sistema pode consumir.
   </p>
 
   <h3>RabbitMQ — Eventos Publicados</h3>
@@ -706,7 +618,7 @@ chat/
     <tbody>
       <tr>
         <td><code>chat.notifications.inbound</code></td>
-        <td>financial_control / qualquer serviço</td>
+        <td>qualquer serviço integrador</td>
         <td>Entrega mensagem ao usuário via WebSocket (ou offline queue)</td>
       </tr>
     </tbody>
@@ -724,15 +636,15 @@ chat/
 </section>
 
 
-<!-- ══════════════════════ 8 · ROADMAP ══════════════════════ -->
+<!-- ══════════════════════ 7 · ROADMAP ══════════════════════ -->
 <section>
-  <h2><span class="num">8</span> Roadmap de Implementação</h2>
+  <h2><span class="num">7</span> Roadmap de Implementação</h2>
 
   <div class="milestone">
     <span class="ms-badge active">M0</span>
     <div class="ms-body">
       <div class="ms-title">Fundação</div>
-      <div class="ms-items">Projeto Phoenix, supervisão OTP, CockroachDB schema, Docker standalone, CI básico</div>
+      <div class="ms-items">Projeto Phoenix, supervisão OTP, schemas ScyllaDB + PostgreSQL, Docker standalone com todos os serviços, CI básico</div>
     </div>
   </div>
   <div class="milestone">
@@ -746,7 +658,7 @@ chat/
     <span class="ms-badge planned">M2</span>
     <div class="ms-body">
       <div class="ms-title">Mensagens e Persistência</div>
-      <div class="ms-items">Send/receive, sequence numbers, Message Store no CockroachDB, histórico paginado</div>
+      <div class="ms-items">Send/receive, sequence numbers, Message Store no ScyllaDB, histórico paginado por cursor</div>
     </div>
   </div>
   <div class="milestone">
@@ -763,26 +675,12 @@ chat/
       <div class="ms-items">Phoenix Presence, room management, typing indicators, online/offline status</div>
     </div>
   </div>
-  <div class="milestone">
-    <span class="ms-badge planned">M5</span>
-    <div class="ms-body">
-      <div class="ms-title">Integração financial_control</div>
-      <div class="ms-items">Plataforma CHAT_NATIVE no tenant service, fan-out RabbitMQ, consumer de notificações</div>
-    </div>
-  </div>
-  <div class="milestone">
-    <span class="ms-badge planned">M6</span>
-    <div class="ms-body">
-      <div class="ms-title">Frontend</div>
-      <div class="ms-items">Feature module no financial_control_admin_system (Angular), componente de chat, integração WS</div>
-    </div>
-  </div>
 </section>
 
 
 <!-- ══════════════════════ FOOTER ══════════════════════ -->
 <div class="footer">
-  <span>Chat Service — Documento de Arquitetura v1.0</span>
+  <span>Chat Service — Documento de Arquitetura v1.1</span>
   <span>Emanuel Martins · Maio 2026</span>
 </div>
 
