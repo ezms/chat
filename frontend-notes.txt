@@ -1,0 +1,87 @@
+FRONTEND — NOTAS DE DISCUSSÃO
+==============================
+(para retomar no fim de semana)
+
+
+CONTEXTO
+--------
+O chat tem 3 modelos de distribuição planejados:
+  A) Standalone  — app completo hospedado, acessado via browser
+  B) SDK         — lib JS que qualquer dev importa e consome o WebSocket diretamente
+  C) Widget      — <chat-widget> embeddable via script tag em qualquer app
+
+
+POR QUE NÃO PHOENIX LIVEVIEW
+------------------------------
+- LiveView é UI reativa renderizada no servidor — parece encaixar, mas tem uma tensão:
+- O chat já usa Phoenix Channels com protocolo próprio (Protobuf + sequence numbers + ack)
+- LiveView usa um canal separado internamente para renderizar diffs de HTML
+- Os modelos B e C (SDK e Widget) precisam ser JS puro de qualquer forma —
+  um integrador externo não vai rodar LiveView
+- Resultado: usar LiveView no standalone significa manter dois sistemas de UI paralelos
+- Conclusão: descartado. O phoenix.js (cliente oficial de Channels) ainda entra no core/,
+  só não usamos LiveView para a camada de apresentação
+
+
+ARQUITETURA DE CAMADAS
+-----------------------
+A ideia é separar protocolo de UI:
+
+  core/        — TypeScript puro, sem framework
+                 sabe falar com o servidor: WebSocket, Protobuf decode,
+                 sequence numbers, reconnect, ack
+                 construído sobre phoenix.js por baixo
+
+  widget/      — componente embeddable construído sobre o core/
+                 vira um bundle JS pequeno (script tag, modelo C)
+
+  standalone/  — UI completa construída sobre o core/
+                 app de chat acessível via browser (modelo A)
+
+  Modelo B = distribuir o core/ como pacote npm (@chat/core)
+
+
+O QUE O MERCADO USA
+--------------------
+Slack, Discord: React + TypeScript (Electron pra desktop, React Native pra mobile)
+
+Por camada:
+  App standalone        → React + TypeScript  (dominante no mercado)
+  Widget embeddable     → Preact ou vanilla TS (Preact = React com 3KB ao invés de 40KB)
+  SDK/core              → TypeScript puro, sem framework
+
+Referências: Stream Chat, Sendbird, Twilio Conversations fazem exatamente isso:
+  @chat/core  (TypeScript puro)
+  @chat/react (hooks/componentes React sobre o core)
+
+
+OPÇÕES EM ABERTO
+----------------
+Entre Svelte e React/Preact:
+
+  React + Preact
+    + dominante, mais referências, mais documentação de chat no mercado
+    + Preact é o padrão do mercado pra widget (tamanho)
+    - mais verboso
+
+  Svelte
+    + compila pra JS vanilla (bundle pequeno, bom pra widget)
+    + sintaxe mais limpa
+    - menos estabelecido no nicho de chat
+    - menos referências de produção
+
+Não há decisão tomada aqui. Estudar antes de definir.
+
+
+PROTO COMO FONTE DE VERDADE
+-----------------------------
+messages.proto gera tipos tanto para o Elixir (backend) quanto para o JS (core/).
+Um único arquivo, dois lados sincronizados automaticamente via protoc.
+Isso não muda independente da escolha de framework frontend.
+
+
+PRÓXIMAS PERGUNTAS A RESPONDER
+--------------------------------
+1. React ou Svelte para standalone e widget?
+2. Monorepo JS (pnpm workspaces) ou tudo dentro de assets/ do Phoenix?
+3. Testes: Vitest para unit, Playwright para E2E do chat end-to-end
