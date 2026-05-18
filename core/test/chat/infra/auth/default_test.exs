@@ -1,5 +1,5 @@
 defmodule Chat.Infra.Auth.DefaultTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   @secret "test_secret_key_base"
   @signer Joken.Signer.create("HS256", @secret)

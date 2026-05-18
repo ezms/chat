@@ -3,9 +3,12 @@ defmodule Chat.Core do
 
   @impl true
   def start(_type, _args) do
-    children = [Chat.Endpoint]
+    children = [
+      Chat.Endpoint,
+      {Phoenix.PubSub, name: Chat.PubSub}
+    ]
 
-    opts = [strategy: :one_for_one, name: Chat.Core.Supervisor]
-    Supervisor.start_link(children, opts)
+    options = [strategy: :one_for_one, name: Chat.Core.Supervisor]
+    Supervisor.start_link(children, options)
   end
 end
