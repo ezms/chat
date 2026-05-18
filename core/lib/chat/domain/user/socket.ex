@@ -1,7 +1,7 @@
 defmodule Chat.Domain.User.Socket do
   use Phoenix.Socket
 
-  channel "room:*", Chat.RoomChannel
+  channel("room:*", Chat.RoomChannel)
 
   @impl true
   def connect(_params, socket, _connect_info) do

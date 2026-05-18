@@ -8,7 +8,8 @@ defmodule Chat.Infra.Database.Supervisor do
   @impl true
   def init(_options) do
     children = [
-      {Xandra, name: :xandra, nodes: [Application.get_env(:core, :scylladb_url, "127.0.0.1:9042")]},
+      {Xandra,
+       name: :xandra, nodes: [Application.get_env(:core, :scylladb_url, "127.0.0.1:9042")]},
       {Task, fn -> Chat.Infra.Database.Migrator.run(:xandra) end}
     ]
 
