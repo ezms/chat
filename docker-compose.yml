@@ -1,0 +1,152 @@
+services:
+
+  # ── Core ────────────────────────────────────────────────────
+
+  scylladb:
+    image: scylladb/scylla:6.2
+    profiles: [local-db]
+    ports:
+      - "9042:9042"
+    volumes:
+      - scylladb_data:/var/lib/scylla
+    command: --smp 1 --memory 512M --overprovisioned 1
+    healthcheck:
+      test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  redis:
+    image: redis:7.4-alpine
+    profiles: [local-cache]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:4.0-management-alpine
+    profiles: [local-queue]
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-chat}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-chat}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Optional features ──────────────────────────────────────────────────────
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.11
+    profiles: [search]
+    ports:
+      - "7700:7700"
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-changeme}
+      MEILI_ENV: ${MEILI_ENV:-development}
+    volumes:
+      - meilisearch_data:/meili_data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:RELEASE.2024-11-07T00-52-20Z
+    profiles: [storage]
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-chatadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-changeme}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Demo / standalone ──────────────────────────────────────────────────────
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    profiles: [demo]
+    ports:
+      - "3000:3000"
+    environment:
+      CORE_URL: ${CORE_URL:-http://core:4000}
+      SCYLLADB_URL: ${SCYLLADB_URL:-scylladb:9042}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+    depends_on:
+      scylladb:
+        condition: service_healthy
+        required: false
+      redis:
+        condition: service_healthy
+        required: false
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    profiles: [demo]
+    ports:
+      - "5173:5173"
+    environment:
+      PUBLIC_CORE_WS_URL: ${PUBLIC_CORE_WS_URL:-ws://localhost:4000/socket}
+      PUBLIC_BACKEND_URL: ${PUBLIC_BACKEND_URL:-http://localhost:3000}
+    depends_on:
+      - backend
+
+  # ── Chat core ──────────────────────────────────────────────────────────────
+
+  core:
+    build:
+      context: ./core
+      dockerfile: Dockerfile
+    ports:
+      - "4000:4000"
+      - "50051:50051"
+    environment:
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:?SECRET_KEY_BASE is required}
+      SCYLLADB_URL: ${SCYLLADB_URL:-scylladb:9042}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://chat:chat@rabbitmq:5672}
+      MEILISEARCH_URL: ${MEILISEARCH_URL:-}
+      MEILISEARCH_KEY: ${MEILISEARCH_KEY:-}
+      STORAGE_URL: ${STORAGE_URL:-}
+    depends_on:
+      scylladb:
+        condition: service_healthy
+        required: false
+      redis:
+        condition: service_healthy
+        required: false
+      rabbitmq:
+        condition: service_healthy
+        required: false
+
+volumes:
+  scylladb_data:
+  redis_data:
+  rabbitmq_data:
+  meilisearch_data:
+  minio_data:
