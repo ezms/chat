@@ -24,13 +24,17 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
   test "responds pong to ping", %{socket: socket} do
     payload = Chat.Envelope.encode(%Chat.Envelope{payload: {:ping, %Chat.Ping{}}})
     ref = push(socket, "msg", payload)
-    assert_reply ref, :ok, response
+    assert_reply(ref, :ok, response)
     assert %Chat.Envelope{payload: {:pong, %Chat.Pong{}}} = Chat.Envelope.decode(response)
   end
 
   test "ignores unknown messages", %{socket: socket} do
-    payload = Chat.Envelope.encode(%Chat.Envelope{payload: {:send_message, %Chat.SendMessage{room_id: "lobby", content: "oi"}}})
+    payload =
+      Chat.Envelope.encode(%Chat.Envelope{
+        payload: {:send_message, %Chat.SendMessage{room_id: "lobby", content: "oi"}}
+      })
+
     ref = push(socket, "msg", payload)
-    refute_reply ref, :ok
+    refute_reply(ref, :ok)
   end
 end
