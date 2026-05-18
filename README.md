@@ -549,15 +549,15 @@ The `proto/messages.proto` dependency is explicit: changes to the protocol trigg
 
 ## Roadmap
 
-| Milestone | Description |
-|---|---|
-| **M0** | Foundation — Elixir project, OTP supervision, ScyllaDB schema, Docker standalone, basic CI |
-| **M1** | Connection & Auth — UserSocket, Phoenix Channels, Protobuf encoding/decoding, heartbeat |
-| **M2** | Messages & Persistence — send/receive, sequence numbers, Message Store, paginated history |
-| **M3** | Delivery Guarantees — explicit ack, offline queue, replay on reconnect, at-least-once |
-| **M4** | Presence & Rooms — Phoenix Presence, room management, typing indicators, online/offline |
-| **M5** | Media & Files — MinIO/S3 via `Chat.Storage`, file message type, presigned URLs |
-| **M6** | Extended Features — threads, reactions, read receipts, contact directory |
-| **M7** | Search — Meilisearch async indexing, message and contact search API |
-| **M8** | Push Notifications — FCM, APNs, Web Push for fully offline users |
-| **M9** | Backup & Export — periodic export job to object storage |
+| Milestone | Description | Complete |
+|---|---|---|
+| **M0** | Foundation — Elixir project, OTP supervision, ScyllaDB schema, Docker standalone, basic CI | ✅ |
+| **M1** | Connection & Auth — UserSocket, Phoenix Channels, Protobuf encoding/decoding, heartbeat | ⬜ |
+| **M2** | Messages & Persistence — send/receive, sequence numbers, Message Store, paginated history | ⬜ |
+| **M3** | Delivery Guarantees — explicit ack, offline queue, replay on reconnect, at-least-once | ⬜ |
+| **M4** | Presence & Rooms — Phoenix Presence, room management, typing indicators, online/offline | ⬜ |
+| **M5** | Media & Files — MinIO/S3 via `Chat.Storage`, file message type, presigned URLs | ⬜ |
+| **M6** | Extended Features — threads, reactions, read receipts, contact directory | ⬜ |
+| **M7** | Search — Meilisearch async indexing, message and contact search API | ⬜ |
+| **M8** | Push Notifications — FCM, APNs, Web Push for fully offline users | ⬜ |
+| **M9** | Backup & Export — periodic export job to object storage | ⬜ |
