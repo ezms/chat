@@ -37,4 +37,4 @@ jobs:
         working-directory: core
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mix coveralls.github
+        run: mix coveralls
