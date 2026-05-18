@@ -21,6 +21,12 @@ jobs:
           path: core/deps
           key: ${{ runner.os }}-mix-${{ hashFiles('core/mix.lock') }}
 
+      - name: Cache build
+        uses: actions/cache@v4
+        with:
+          path: core/_build
+          key: ${{ runner.os }}-build-${{ hashFiles('core/mix.lock') }}
+
       - name: Install dependencies
         working-directory: core
         run: mix deps.get
