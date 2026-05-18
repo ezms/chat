@@ -1,0 +1,73 @@
+FRONTEND — DECISÕES TOMADAS
+============================
+(atualizado após discussão completa)
+
+
+ESTRUTURA DO REPOSITÓRIO
+-------------------------
+Monorepo sem umbrella. Projetos independentes com ciclos de vida separados:
+
+  core/       — Elixir, Mix project próprio (WebSocket, gRPC, RabbitMQ)
+  backend/    — Bun + Elysia, REST API para o frontend (demo/portfólio)
+  frontend/   — Svelte, UI standalone (demo/portfólio)
+  proto/      — messages.proto, fonte de verdade para Elixir e TypeScript
+
+
+POR QUE SVELTE
+---------------
+- Compila para JS vanilla sem runtime — bundle pequeno, adequado para widget futuro (modelo C)
+- Mesmo ecossistema TypeScript do backend/ e do core JS client
+- Produção: existem projetos em produção com Svelte
+
+
+POR QUE BUN + ELYSIA NO BACKEND
+---------------------------------
+- Backend existe apenas para demonstração e self-hosting, não é parte do core
+- TypeScript — mesmo ecossistema do frontend/
+- Não há motivo técnico para forçar Elixir numa camada de demonstração
+- Pode ser trocado sem impacto no core
+
+
+MODELOS DE DISTRIBUIÇÃO
+------------------------
+O chat tem 3 modelos de uso:
+
+  A) Standalone  — core + backend + frontend sobem juntos. Acesso via browser.
+  B) SDK/core    — só o core. Integrador consome WebSocket diretamente com biblioteca própria.
+  C) Widget      — bundle JS embeddable via script tag. Não implementado no roadmap atual.
+
+Docker Compose profiles refletem isso:
+  core sempre sobe.
+  backend, frontend, search (Meilisearch), media (MinIO) são profiles opcionais.
+
+
+O QUE FOI DESCARTADO E POR QUÊ
+--------------------------------
+LiveView     — chat usa Phoenix Channels com protocolo próprio (Protobuf + sequence numbers).
+               LiveView usa canal separado internamente. Modelos B e C precisam de JS puro de
+               qualquer forma — usar LiveView no standalone criaria dois sistemas paralelos.
+
+React        — válido, dominante no mercado. Descartado em favor do Svelte pelo tamanho do
+               bundle compilado (relevante para widget futuro) e consistência com o ecossistema
+               TypeScript já presente no projeto.
+
+Node         — considerado para o backend/. Sem vantagem técnica sobre Bun para esse caso.
+               Bun é mais moderno e tem melhor performance como runtime TypeScript.
+
+
+PROTO COMO FONTE DE VERDADE
+-----------------------------
+messages.proto gera:
+  - Módulos Elixir via protoc-gen-elixir  (core/)
+  - Tipos TypeScript via protoc-gen-es    (frontend/ e backend/)
+
+Um único arquivo, dois lados sincronizados via protoc no devcontainer.
+
+
+AMBIENTE DE DESENVOLVIMENTO
+-----------------------------
+DevContainer (.devcontainer/) com:
+  - Elixir 1.17 + Erlang OTP
+  - Bun
+  - protoc + protoc-gen-elixir + protoc-gen-es
+  - Docker outside-of-docker (para subir os serviços via docker-compose)

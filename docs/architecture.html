@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<Está documentado nos próprios docs do Elixir. Você cria com:!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -456,19 +456,19 @@
 <span class="c">// messages.proto</span>
 
 <span class="k">message</span> <span class="n">ClientFrame</span> {
-  <span class="k">uint64</span>   seq       = 1;  <span class="c">// número de sequência crescente por conexão</span>
-  <span class="k">string</span>   channel   = 2;  <span class="c">// "workspace:uuid" | "dm:uuid" | "broadcast"</span>
+  <span class="k">uint64</span>   sequence_number = 1;  <span class="c">// número de sequência crescente por conexão</span>
+  <span class="k">string</span>   channel         = 2;  <span class="c">// "workspace:uuid" | "dm:uuid" | "broadcast"</span>
   <span class="k">oneof</span>    payload {
-    <span class="n">SendMessage</span>    send    = 3;
-    <span class="n">AckMessage</span>     ack     = 4;
-    <span class="n">TypingEvent</span>    typing  = 5;
+    <span class="n">SendMessage</span>    send     = 3;
+    <span class="n">AckMessage</span>     ack      = 4;
+    <span class="n">TypingEvent</span>    typing   = 5;
     <span class="n">PresenceQuery</span>  presence = 6;
   }
 }
 
 <span class="k">message</span> <span class="n">ServerFrame</span> {
-  <span class="k">uint64</span>   seq       = 1;  <span class="c">// seq do servidor — cliente usa para detectar gap</span>
-  <span class="k">string</span>   channel   = 2;
+  <span class="k">uint64</span>   sequence_number = 1;  <span class="c">// servidor — cliente usa para detectar gap</span>
+  <span class="k">string</span>   channel         = 2;
   <span class="k">oneof</span>    payload {
     <span class="n">Message</span>        message  = 3;
     <span class="n">Ack</span>            ack      = 4;
@@ -481,8 +481,8 @@
   <h3>Delivery Guarantees</h3>
   <div class="callout green">
     <p>
-      Cada mensagem tem um <strong>seq</strong> crescente por canal. O cliente rastreia o último seq recebido.
-      Ao reconectar, envia <code>resume: { channel, last_seq }</code> — o servidor entrega as mensagens perdidas
+      Cada mensagem tem um <strong>sequence_number</strong> crescente por canal. O cliente rastreia o último número recebido.
+      Ao reconectar, envia <code>resume: { channel, last_sequence_number }</code> — o servidor entrega as mensagens perdidas
       em ordem antes de continuar o stream normal. Isso é exatamente o modelo do Discord Gateway v10.
     </p>
   </div>
@@ -495,15 +495,17 @@
 
   <div class="tags">
     <span class="tag purple">Elixir ~1.17</span>
-    <span class="tag purple">Phoenix 1.7</span>
     <span class="tag purple">Phoenix Channels</span>
     <span class="tag purple">Phoenix Presence</span>
     <span class="tag blue">ScyllaDB</span>
     <span class="tag red">Redis</span>
-    <span class="tag blue">PostgreSQL</span>
     <span class="tag orange">RabbitMQ</span>
     <span class="tag green">Protobuf</span>
     <span class="tag green">gRPC</span>
+    <span class="tag blue">Meilisearch</span>
+    <span class="tag">MinIO</span>
+    <span class="tag green">Svelte</span>
+    <span class="tag">Bun + Elysia</span>
     <span class="tag">Docker</span>
   </div>
 
@@ -548,42 +550,102 @@
       </tr>
       <tr>
         <td>Metadados de rooms</td>
-        <td><strong>PostgreSQL</strong></td>
-        <td>CRUD relacional — canais, membros, permissões. Não é time-series, não precisa de ScyllaDB.</td>
+        <td><strong>ScyllaDB</strong></td>
+        <td>Modelagem por access pattern: rooms_by_id, members_by_room, rooms_by_user. Sem JOIN, sem serviço extra.</td>
+      </tr>
+      <tr>
+        <td>Busca full-text</td>
+        <td><strong>Meilisearch</strong></td>
+        <td>Motor de busca open source, self-hostable, escrito em Rust. Indexação async via RabbitMQ consumer. ScyllaDB é o store primário — Meilisearch é só o índice.</td>
+      </tr>
+      <tr>
+        <td>Object storage</td>
+        <td><strong>MinIO</strong></td>
+        <td>S3-compatible, self-hostable. Armazena arquivos e mídia. Acesso via presigned URLs.</td>
       </tr>
       <tr>
         <td>Fan-out</td>
         <td><strong>RabbitMQ</strong></td>
         <td>Exchange topic para routing genérico por workspace/canal. Integradores assinam filas próprias.</td>
       </tr>
+      <tr>
+        <td>Backend (demo)</td>
+        <td><strong>Bun + Elysia</strong></td>
+        <td>REST API que serve o frontend standalone. Existe para demonstração e self-hosting — não faz parte do core do serviço. TypeScript, mesmo ecossistema do frontend.</td>
+      </tr>
+      <tr>
+        <td>Frontend (demo)</td>
+        <td><strong>Svelte</strong></td>
+        <td>UI standalone para demonstração e portfólio. Consome o core via WebSocket (real-time) e o backend via HTTP (dados). Demonstra o widget em uso.</td>
+      </tr>
+      <tr>
+        <td>Widget (distribuível)</td>
+        <td><strong>Svelte → Web Component</strong></td>
+        <td>Implementação default de <code>&lt;chat-widget&gt;</code>. Representa o Modelo C de distribuição. O integrador pode ignorar e construir o próprio widget sobre o core JS.</td>
+      </tr>
     </tbody>
   </table>
 
-  <h3>Estrutura de Diretórios</h3>
+  <h3>Estrutura do Repositório</h3>
 <pre>
 chat/
-├── lib/
-│   └── chat/
-│       ├── application.ex           <span class="c"># supervision tree</span>
-│       ├── channels/
-│       │   ├── user_socket.ex       <span class="c"># autenticação JWT na conexão</span>
-│       │   ├── room_channel.ex      <span class="c"># canal workspace/DM</span>
-│       │   └── system_channel.ex   <span class="c"># heartbeat, eventos de sistema</span>
-│       ├── presence.ex              <span class="c"># Phoenix.Presence CRDT</span>
-│       ├── rooms/                   <span class="c"># Room Manager (CRUD de canais — PostgreSQL)</span>
-│       ├── messages/                <span class="c"># Message Store (ScyllaDB)</span>
-│       ├── delivery/
-│       │   ├── fanout.ex            <span class="c"># publica no RabbitMQ</span>
-│       │   └── offline_queue.ex     <span class="c"># fila para usuários desconectados</span>
-│       └── proto/                   <span class="c"># definições Protobuf geradas</span>
-├── priv/
-│   └── migrations/                  <span class="c"># schema PostgreSQL (rooms, members)</span>
+├── core/                            <span class="c"># Elixir — serviço principal</span>
+│   ├── lib/chat_core/
+│   │   ├── application.ex           <span class="c"># supervision tree</span>
+│   │   ├── auth.ex                  <span class="c"># behaviour — integrador fornece implementação</span>
+│   │   ├── channels/
+│   │   │   ├── user_socket.ex       <span class="c"># handshake, chama Auth.verify/1</span>
+│   │   │   ├── room_channel.ex      <span class="c"># canal workspace/DM</span>
+│   │   │   └── system_channel.ex   <span class="c"># heartbeat, eventos de sistema</span>
+│   │   ├── presence.ex              <span class="c"># Phoenix.Presence CRDT</span>
+│   │   ├── rooms/                   <span class="c"># Room Manager (ScyllaDB)</span>
+│   │   ├── messages/                <span class="c"># Message Store (ScyllaDB)</span>
+│   │   ├── delivery/
+│   │   │   ├── fanout.ex            <span class="c"># publica no RabbitMQ</span>
+│   │   │   └── offline_queue.ex     <span class="c"># fila para usuários desconectados</span>
+│   │   └── proto/                   <span class="c"># módulos Protobuf gerados</span>
+│   ├── priv/migrations/             <span class="c"># schema ScyllaDB</span>
+│   ├── config/
+│   └── mix.exs
+│
+├── backend/                         <span class="c"># Bun + Elysia — REST API (demo/standalone)</span>
+│   ├── src/
+│   └── package.json
+│
+├── frontend/                        <span class="c"># Svelte — UI standalone (demo/portfólio)</span>
+│   ├── src/
+│   └── package.json
+│
+├── widget/                          <span class="c"># Svelte → Web Component (distribuível)</span>
+│   ├── src/
+│   └── package.json
+│
 ├── proto/
-│   └── messages.proto               <span class="c"># definição dos frames</span>
-├── config/
-├── mix.exs
-└── docker-compose.yml               <span class="c"># standalone: chat + ScyllaDB + Redis + PostgreSQL + RabbitMQ</span>
+│   └── messages.proto               <span class="c"># fonte de verdade: gera tipos Elixir + TypeScript</span>
+│
+└── docker-compose.yml               <span class="c"># profiles: demo | search | storage | local-db | local-cache | local-queue</span>
 </pre>
+
+  <div class="callout" style="margin-top:16px">
+    <p>
+      <strong>Docker Compose profiles — nomes por feature, não por tecnologia:</strong>
+    </p>
+    <table style="margin-top:10px">
+      <thead><tr><th>Profile</th><th>O que sobe</th><th>Quando usar</th></tr></thead>
+      <tbody>
+        <tr><td><code>local-db</code></td><td>ScyllaDB local</td><td>Sem instância externa configurada</td></tr>
+        <tr><td><code>local-cache</code></td><td>Redis local</td><td>Sem instância externa configurada</td></tr>
+        <tr><td><code>local-queue</code></td><td>RabbitMQ local</td><td>Sem broker externo configurado</td></tr>
+        <tr><td><code>search</code></td><td>Motor de busca</td><td>Feature de busca habilitada (M7)</td></tr>
+        <tr><td><code>storage</code></td><td>Object storage</td><td>Feature de mídia habilitada (M5)</td></tr>
+        <tr><td><code>demo</code></td><td>backend + frontend + widget</td><td>Deployment standalone / portfólio</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:10px">
+      Se <code>SCYLLADB_URL</code>, <code>REDIS_URL</code> ou <code>RABBITMQ_URL</code> estiverem definidas no env,
+      os profiles <code>local-*</code> são omitidos — o serviço conecta no externo.
+    </p>
+  </div>
 </section>
 
 
@@ -593,7 +655,56 @@ chat/
 
   <p>
     Por ser um serviço atômico, o chat expõe contratos estáveis que qualquer sistema pode consumir.
+    O que o chat gerencia e o que é responsabilidade do integrador estão explicitamente separados.
   </p>
+
+  <h3>Responsabilidades do Integrador</h3>
+  <div class="callout orange">
+    <p>
+      O chat <strong>nunca gerencia</strong>: identidade de usuários, lista de contatos, grafo social,
+      permissões de negócio, dados de perfil. O serviço confia no token recebido e devolve um
+      <code>user_id</code> — o que esse ID representa é domínio do integrador.
+    </p>
+  </div>
+
+  <table>
+    <thead><tr><th>Responsabilidade</th><th>De quem</th><th>Como</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Autenticação</td>
+        <td>Integrador</td>
+        <td>Implementa o behaviour <code>Chat.Auth</code> — recebe o token, retorna <code>{:ok, user_id}</code> ou <code>{:error, reason}</code>. JWT é a implementação default.</td>
+      </tr>
+      <tr>
+        <td>Object storage</td>
+        <td>Integrador (opcional)</td>
+        <td>Implementa o behaviour <code>Chat.Storage</code> — upload, download, delete, presigned_url. MinIO é o default. S3, R2, Oracle Storage ou qualquer provider entram como implementação alternativa.</td>
+      </tr>
+      <tr>
+        <td>Message broker</td>
+        <td>Integrador (opcional)</td>
+        <td>Configuração via <code>RABBITMQ_URL</code> no env. Se definida, conecta no broker externo do integrador. Se ausente, o profile <code>local-queue</code> sobe uma instância local.</td>
+      </tr>
+      <tr>
+        <td>Identidade / perfil</td>
+        <td>Integrador</td>
+        <td>O chat conhece só o <code>user_id</code>. Nome, avatar e dados de perfil são fornecidos pelo sistema que integra.</td>
+      </tr>
+      <tr>
+        <td>Lista de contatos</td>
+        <td>Integrador</td>
+        <td>O chat gerencia membros de sala — quem está em qual room. O grafo social (quem segue quem, lista de amigos) é externo ao serviço.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout" style="margin-top:16px">
+    <p>
+      <strong>Sobre o <code>&lt;chat-widget&gt;</code>:</strong> o projeto fornece uma implementação default
+      como referência. O integrador não é obrigado a usá-la — pode construir seu próprio widget sobre
+      o core JS, com a UI e o comportamento que quiser.
+    </p>
+  </div>
 
   <h3>RabbitMQ — Eventos Publicados</h3>
   <table>
@@ -636,15 +747,57 @@ chat/
 </section>
 
 
-<!-- ══════════════════════ 7 · ROADMAP ══════════════════════ -->
+<!-- ══════════════════════ 7 · QUALIDADE E TESTES ══════════════════════ -->
 <section>
-  <h2><span class="num">7</span> Roadmap de Implementação</h2>
+  <h2><span class="num">7</span> Qualidade e Testes</h2>
+
+  <p>Meta de cobertura: <strong>80–85%</strong>. Serviços externos (ScyllaDB, Redis, RabbitMQ) rodam via Docker nos testes de integração — sem mock de infraestrutura.</p>
+
+  <h3>Backend — Elixir (core/)</h3>
+  <table>
+    <thead><tr><th>Ferramenta</th><th>Propósito</th></tr></thead>
+    <tbody>
+      <tr><td><strong>ExUnit</strong></td><td>Framework de testes nativo. Base de tudo.</td></tr>
+      <tr><td><strong>Phoenix.ChannelCase</strong></td><td>Helpers nativos para testar ciclo completo de canal — connect, join, push, assert_reply, assert_broadcast, disconnect.</td></tr>
+      <tr><td><strong>Mox</strong></td><td>Mocks com contrato explícito via behaviours. Usado para dependências externas que não sobem em teste unitário.</td></tr>
+      <tr><td><strong>ExMachina</strong></td><td>Factories para dados de teste.</td></tr>
+      <tr><td><strong>StreamData</strong></td><td>Property-based testing. Sequence numbers, delivery guarantees e edge cases de reconexão têm invariantes que testes unitários comuns não cobrem.</td></tr>
+      <tr><td><strong>Credo</strong></td><td>Análise estática — estilo, code smells, complexidade.</td></tr>
+      <tr><td><strong>Dialyxir</strong></td><td>Type checking via Dialyzer. Pega erros de tipo em tempo de compilação.</td></tr>
+      <tr><td><strong>ExCoveralls</strong></td><td>Relatório de cobertura. Integra com CodeClimate.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Frontend e Backend JS (frontend/ e backend/)</h3>
+  <table>
+    <thead><tr><th>Ferramenta</th><th>Propósito</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Vitest</strong></td><td>Testes unitários. TypeScript nativo, compatível com Vite.</td></tr>
+      <tr><td><strong>Svelte Testing Library</strong></td><td>Testes de componentes Svelte por comportamento, não implementação.</td></tr>
+      <tr><td><strong>Playwright</strong></td><td>E2E end-to-end conectando em servidor real. Testa o fluxo completo de chat.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>CI e Qualidade</h3>
+  <div class="callout green">
+    <p>
+      <strong>GitHub Actions</strong> — pipeline de CI. <strong>CodeClimate</strong> como gate de qualidade
+      (gratuito para open source) — agrega cobertura, Credo e Dialyxir numa visão unificada.
+      PR bloqueado se cobertura cair abaixo de 80%.
+    </p>
+  </div>
+</section>
+
+
+<!-- ══════════════════════ 8 · ROADMAP ══════════════════════ -->
+<section>
+  <h2><span class="num">8</span> Roadmap de Implementação</h2>
 
   <div class="milestone">
     <span class="ms-badge active">M0</span>
     <div class="ms-body">
       <div class="ms-title">Fundação</div>
-      <div class="ms-items">Projeto Phoenix, supervisão OTP, schemas ScyllaDB + PostgreSQL, Docker standalone com todos os serviços, CI básico</div>
+      <div class="ms-items">Projeto Phoenix, supervisão OTP, schema ScyllaDB, Docker standalone com todos os serviços, CI básico</div>
     </div>
   </div>
   <div class="milestone">
@@ -675,12 +828,47 @@ chat/
       <div class="ms-items">Phoenix Presence, room management, typing indicators, online/offline status</div>
     </div>
   </div>
+  <div class="milestone">
+    <span class="ms-badge planned">M5</span>
+    <div class="ms-body">
+      <div class="ms-title">Media e Arquivos</div>
+      <div class="ms-items">Object storage via MinIO, tipo de mensagem file no Protobuf, presigned URLs para acesso, endpoint de upload</div>
+    </div>
+  </div>
+  <div class="milestone">
+    <span class="ms-badge planned">M6</span>
+    <div class="ms-body">
+      <div class="ms-title">Features Estendidas</div>
+      <div class="ms-items">Threads (parent_id no schema), reações, read receipts, diretório de contatos/usuários</div>
+    </div>
+  </div>
+  <div class="milestone">
+    <span class="ms-badge planned">M7</span>
+    <div class="ms-body">
+      <div class="ms-title">Busca</div>
+      <div class="ms-items">Meilisearch — indexação async de mensagens e contatos via RabbitMQ consumer, search API</div>
+    </div>
+  </div>
+  <div class="milestone">
+    <span class="ms-badge planned">M8</span>
+    <div class="ms-body">
+      <div class="ms-title">Push Notifications</div>
+      <div class="ms-items">FCM, APNs e Web Push para usuário totalmente offline — separado da offline queue</div>
+    </div>
+  </div>
+  <div class="milestone">
+    <span class="ms-badge planned">M9</span>
+    <div class="ms-body">
+      <div class="ms-title">Backup e Export</div>
+      <div class="ms-items">Job periódico de export para object storage (MinIO), histórico completo por workspace</div>
+    </div>
+  </div>
 </section>
 
 
 <!-- ══════════════════════ FOOTER ══════════════════════ -->
 <div class="footer">
-  <span>Chat Service — Documento de Arquitetura v1.1</span>
+  <span>Chat Service — Documento de Arquitetura v1.5</span>
   <span>Emanuel Martins · Maio 2026</span>
 </div>
 
