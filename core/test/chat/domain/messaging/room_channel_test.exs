@@ -23,7 +23,7 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
 
   test "responds pong to ping", %{socket: socket} do
     payload = Chat.Envelope.encode(%Chat.Envelope{payload: {:ping, %Chat.Ping{}}})
-    ref = push(socket, "msg", payload)
+    ref = push(socket, "message", payload)
     assert_reply(ref, :ok, response)
     assert %Chat.Envelope{payload: {:pong, %Chat.Pong{}}} = Chat.Envelope.decode(response)
   end
@@ -34,7 +34,7 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
         payload: {:send_message, %Chat.SendMessage{room_id: "lobby", content: "oi"}}
       })
 
-    ref = push(socket, "msg", payload)
+    ref = push(socket, "message", payload)
     refute_reply(ref, :ok)
   end
 end

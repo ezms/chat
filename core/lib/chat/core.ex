@@ -5,7 +5,8 @@ defmodule Chat.Core do
   def start(_type, _args) do
     children = [
       Chat.Endpoint,
-      {Phoenix.PubSub, name: Chat.PubSub}
+      {Phoenix.PubSub, name: Chat.PubSub},
+      Chat.Infra.Redis.Supervisor
     ]
 
     options = [strategy: :one_for_one, name: Chat.Core.Supervisor]
