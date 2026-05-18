@@ -166,24 +166,21 @@ The `widget/` directory contains the default implementation. Integrators are fre
 ```
 chat/
 ├── core/                       # Elixir — the service
-│   ├── lib/chat_core/
-│   │   ├── application.ex      # OTP supervision tree
-│   │   ├── auth.ex             # Chat.Auth behaviour
-│   │   ├── storage.ex          # Chat.Storage behaviour
-│   │   ├── channels/
-│   │   │   ├── user_socket.ex  # handshake, calls Auth.verify/1
-│   │   │   ├── room_channel.ex # workspace/DM channel
-│   │   │   └── system_channel.ex # heartbeat, system events
-│   │   ├── presence.ex         # Phoenix.Presence CRDT
-│   │   ├── rooms/              # Room Manager (ScyllaDB)
-│   │   ├── messages/           # Message Store (ScyllaDB)
-│   │   ├── delivery/
-│   │   │   ├── fanout.ex       # publishes to RabbitMQ
-│   │   │   └── offline_queue.ex
-│   │   └── proto/              # generated Protobuf modules
-│   ├── priv/migrations/        # ScyllaDB schema
+│   ├── lib/chat/
+│   │   ├── core.ex             # OTP Application + root supervisor
+│   │   ├── endpoint.ex         # Phoenix Endpoint (WebSocket entry point)
+│   │   ├── domain/             # business logic (Phoenix Contexts)
+│   │   │   ├── user/
+│   │   │   │   └── socket.ex   # UserSocket — handshake, calls Auth.verify/1
+│   │   │   ├── messaging/      # send/receive, sequence numbers, history
+│   │   │   └── presence/       # Phoenix.Presence CRDT
+│   │   └── infra/              # external adapters
+│   │       ├── database/       # ScyllaDB (Xandra)
+│   │       ├── cache/          # Redis
+│   │       └── queue/          # RabbitMQ
 │   ├── config/
 │   └── mix.exs
+│
 │
 ├── backend/                    # Bun + Elysia — REST API (demo)
 ├── frontend/                   # Svelte — standalone UI (demo)
@@ -197,6 +194,8 @@ chat/
 ├── docker-compose.yml
 └── README.md
 ```
+
+`core/` follows [Phoenix Contexts](https://hexdocs.pm/phoenix/contexts.html): `domain/` holds business logic, `infra/` holds external adapters (database, cache, queue).
 
 ---
 
