@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package chat;
+
+message Envelope {
+  oneof payload {
+    Ping ping = 1;
+    Pong pong = 2;
+    SendMessage send_message = 3;
+    MessageDelivered message_delivered = 4;
+  }
+}
+
+message Ping {}
+message Pong {}
+
+message SendMessage {
+  string room_id = 1;
+  bytes content = 2;
+}
+
+message MessageDelivered {
+  string room_id = 1;
+  int64 sequence_number = 2;
+  string sender_id = 3;
+  bytes content = 4;
+  int64 inserted_at = 5;
+}
