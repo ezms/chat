@@ -1,0 +1,30 @@
+defmodule Chat.Domain.User.SocketTest do
+  use ExUnit.Case, async: true
+
+  import Phoenix.ChannelTest
+
+  @endpoint Chat.Endpoint
+
+  @secret "test_secret_key_base_must_be_at_least_64_chars_long_xxxxxxxxxxxxxxx"
+  @signer Joken.Signer.create("HS256", @secret)
+
+  setup do
+    Application.put_env(:core, :secret_key_base, @secret)
+    :ok
+  end
+
+  defp token(claims), do: elem(Joken.encode_and_sign(claims, @signer), 1)
+
+  test "connects with valid token" do
+    assert {:ok, _socket} =
+             connect(Chat.Domain.User.Socket, %{"token" => token(%{"sub" => "user_1"})})
+  end
+
+  test "rejects connection without token" do
+    assert :error = connect(Chat.Domain.User.Socket, %{})
+  end
+
+  test "rejects connection with invalid token" do
+    assert :error = connect(Chat.Domain.User.Socket, %{"token" => "invalido"})
+  end
+end

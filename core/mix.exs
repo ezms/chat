@@ -33,6 +33,7 @@ defmodule Chat.Core.MixProject do
       {:jason, "~> 1.4"},
       {:decimal, "~> 2.0"},
       {:xandra, "~> 0.19"},
+      {:joken, "~> 2.6"},
       {:excoveralls, "~> 0.18", only: :test}
     ]
   end
