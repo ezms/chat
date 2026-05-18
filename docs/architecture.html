@@ -789,9 +789,79 @@ chat/
 </section>
 
 
-<!-- ══════════════════════ 8 · ROADMAP ══════════════════════ -->
+<!-- ══════════════════════ 8 · CI/CD E DISTRIBUIÇÃO ══════════════════════ -->
 <section>
-  <h2><span class="num">8</span> Roadmap de Implementação</h2>
+  <h2><span class="num">8</span> CI/CD e Distribuição</h2>
+
+  <p>
+    Um único workflow (<code>.github/workflows/ci.yml</code>) com jobs filtrados por path.
+    Cada job só executa quando seus arquivos relevantes mudam. A dependência do
+    <code>proto/messages.proto</code> é explícita — mudanças no protocolo disparam rebuild
+    do <code>core</code> e do <code>widget</code> garantindo que imagem e pacote publicados
+    estejam sempre em sincronia.
+  </p>
+
+  <h3>Artefatos Publicados</h3>
+  <table>
+    <thead><tr><th>Artefato</th><th>Registry</th><th>Trigger</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>chat-core</code> (imagem Docker)</td>
+        <td>GHCR — <code>ghcr.io/username/chat-core</code></td>
+        <td>Tag <code>v*</code></td>
+      </tr>
+      <tr>
+        <td><code>@chat/widget</code> (pacote npm)</td>
+        <td>npm registry</td>
+        <td>Tag <code>v*</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Jobs por Path</h3>
+  <table>
+    <thead><tr><th>Job</th><th>Dispara quando</th><th>Em PR</th><th>Em tag v*</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>core</code></td>
+        <td><code>core/**</code> ou <code>proto/**</code></td>
+        <td>test, credo, dialyzer, coverage</td>
+        <td>+ build image → push GHCR</td>
+      </tr>
+      <tr>
+        <td><code>widget</code></td>
+        <td><code>widget/**</code> ou <code>proto/**</code></td>
+        <td>test, build</td>
+        <td>+ publish npm</td>
+      </tr>
+      <tr>
+        <td><code>backend</code></td>
+        <td><code>backend/**</code></td>
+        <td>test, type check</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td><code>frontend</code></td>
+        <td><code>frontend/**</code></td>
+        <td>test, build</td>
+        <td>—</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout green" style="margin-top:16px">
+    <p>
+      GHCR (GitHub Container Registry) é o registry primário — sem conta separada,
+      sem rate limit em repositórios públicos, integrado ao token do Actions.
+      Mirror opcional para Docker Hub via secret <code>DOCKERHUB_TOKEN</code>.
+    </p>
+  </div>
+</section>
+
+
+<!-- ══════════════════════ 9 · ROADMAP ══════════════════════ -->
+<section>
+  <h2><span class="num">9</span> Roadmap de Implementação</h2>
 
   <div class="milestone">
     <span class="ms-badge active">M0</span>
@@ -868,7 +938,7 @@ chat/
 
 <!-- ══════════════════════ FOOTER ══════════════════════ -->
 <div class="footer">
-  <span>Chat Service — Documento de Arquitetura v1.5</span>
+  <span>Chat Service — Documento de Arquitetura v1.6</span>
   <span>Emanuel Martins · Maio 2026</span>
 </div>
 

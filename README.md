@@ -24,6 +24,7 @@ A standalone, generic and integrable real-time messaging service. Designed to be
   - [gRPC Admin API](#grpc-admin-api)
 - [Development](#development)
 - [Testing](#testing)
+- [CI/CD](#cicd)
 - [Roadmap](#roadmap)
 
 ---
@@ -52,12 +53,50 @@ docker compose --profile local-db --profile local-cache --profile local-queue --
 **Model B — Core only (SDK)**
 Deploy only `core`. The integrating system connects via WebSocket using the Protobuf protocol, implements the `Chat.Auth` behaviour, and subscribes to RabbitMQ events.
 
+Pull the published image — no need to clone the repository:
+
+```bash
+docker pull ghcr.io/your-username/chat-core:latest
+```
+
+Or add it to your existing `docker-compose.yml`:
+
+```yaml
+services:
+  chat:
+    image: ghcr.io/your-username/chat-core:latest
+    ports:
+      - "4000:4000"
+      - "50051:50051"
+    environment:
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      RABBITMQ_URL: ${RABBITMQ_URL}
+      SCYLLADB_URL: ${SCYLLADB_URL}
+      REDIS_URL: ${REDIS_URL}
+```
+
+For local development with all services:
+
 ```bash
 docker compose --profile local-db --profile local-cache --profile local-queue up
 ```
 
 **Model C — Widget**
-Embed `<chat-widget>` in any web application via a script tag. The widget connects directly to `core`. The `widget/` directory provides a default implementation — integrators are free to build their own widget on top of the core JS client.
+Install the published package and embed in any web application:
+
+```bash
+bun add @chat/widget
+# or
+npm install @chat/widget
+```
+
+```html
+<!-- or via CDN / script tag -->
+<script type="module" src="https://unpkg.com/@chat/widget"></script>
+<chat-widget server="wss://your-chat-host/socket" token="..." room="..."></chat-widget>
+```
+
+The `widget/` directory contains the default implementation. Integrators are free to build their own widget on top of the core JS client.
 
 ---
 
@@ -455,6 +494,57 @@ bun run e2e   # end-to-end (Playwright)
 ### CI
 
 GitHub Actions runs on every pull request. CodeClimate aggregates coverage and quality gates — a PR is blocked if coverage drops below 80%.
+
+---
+
+## CI/CD
+
+A single workflow (`.github/workflows/ci.yml`) with path-based job filtering. Each job only runs when its relevant paths change — no redundant builds.
+
+```
+push / pull_request
+        │
+        ▼
+  detect-changes          ← dorny/paths-filter
+  ┌─────┬──────┬────────┬──────────┐
+  │     │      │        │          │
+  ▼     ▼      ▼        ▼          ▼
+core  backend frontend widget   proto
+  │                       │
+  └───────────────────────┘
+    both rebuild when proto/ changes
+```
+
+### On pull request
+
+| Job | Triggered when | Steps |
+|---|---|---|
+| `core` | `core/**` or `proto/**` | test, credo, dialyzer, coverage gate |
+| `backend` | `backend/**` | test, type check |
+| `frontend` | `frontend/**` | test, build |
+| `widget` | `widget/**` or `proto/**` | test, build |
+
+### On release tag (`v*`)
+
+```
+tag pushed
+    │
+    ├── build core image → push to GHCR (ghcr.io/your-username/chat-core)
+    │                    → mirror to Docker Hub (optional, via secret)
+    │
+    └── build widget → publish to npm (@chat/widget)
+```
+
+The `proto/messages.proto` dependency is explicit: changes to the protocol trigger rebuilds of both `core` and `widget` — ensuring the published image and the published package are always in sync.
+
+### Secrets required
+
+| Secret | Purpose |
+|---|---|
+| `GHCR_TOKEN` | GitHub token with `write:packages` — pushes core image to GHCR |
+| `NPM_TOKEN` | npm publish token — publishes `@chat/widget` |
+| `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN` | Optional — mirrors core image to Docker Hub |
+| `CC_TEST_REPORTER_ID` | CodeClimate reporter ID for coverage upload |
 
 ---
 
