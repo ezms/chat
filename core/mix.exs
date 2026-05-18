@@ -8,7 +8,7 @@ defmodule Chat.Core.MixProject do
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      test_coverage: [tool: ExCoveralls],
+      test_coverage: [tool: ExCoveralls, minimum_coverage: 80],
       preferred_cli_env: [
         coveralls: :test,
         "coveralls.github": :test
