@@ -14,6 +14,8 @@ defmodule Chat.Envelope do
     json_name: "messageDelivered",
     oneof: 0
   )
+
+  field(:ack, 5, type: Chat.Ack, oneof: 0)
 end
 
 defmodule Chat.Ping do
@@ -53,4 +55,13 @@ defmodule Chat.MessageDelivered do
   field(:sender_id, 3, type: :string, json_name: "senderId")
   field(:content, 4, type: :bytes)
   field(:inserted_at, 5, type: :int64, json_name: "insertedAt")
+end
+
+defmodule Chat.Ack do
+  @moduledoc false
+
+  use Protobuf, full_name: "chat.Ack", protoc_gen_elixir_version: "0.16.0", syntax: :proto3
+
+  field(:sequence_number, 1, type: :int64, json_name: "sequenceNumber")
+  field(:room_id, 2, type: :string, json_name: "roomId")
 end

@@ -51,4 +51,62 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
     push(socket, "message", payload)
     assert_broadcast("message", ^payload)
   end
+
+  test "replays missed messages on reconnect with last_sequence", %{socket: socket} do
+    payload =
+      Chat.Envelope.encode(%Chat.Envelope{
+        payload: {:send_message, %Chat.SendMessage{room_id: "lobby", content: "missed"}}
+      })
+
+    push(socket, "message", payload)
+
+    {:ok, token, _} = Joken.encode_and_sign(%{"sub" => "user_reconnect"}, @signer)
+    {:ok, socket2} = connect(Chat.Domain.User.Socket, %{"token" => token})
+    {:ok, _, _} = subscribe_and_join(socket2, "room:lobby", %{"last_sequence" => 0})
+
+    assert_push("message", _)
+  end
+
+  test "replays missed messages via stored ack on reconnect" do
+    room_id = "room_#{System.unique_integer([:positive])}"
+    sender_id = "user_sender_#{System.unique_integer([:positive])}"
+    user_offline = "user_offline_#{System.unique_integer([:positive])}"
+
+    {:ok, sender_token, _} = Joken.encode_and_sign(%{"sub" => sender_id}, @signer)
+    {:ok, sender_conn} = connect(Chat.Domain.User.Socket, %{"token" => sender_token})
+    {:ok, _, sender_socket} = subscribe_and_join(sender_conn, "room:#{room_id}")
+
+    first_payload =
+      Chat.Envelope.encode(%Chat.Envelope{
+        payload: {:send_message, %Chat.SendMessage{room_id: room_id, content: "first"}}
+      })
+
+    push(sender_socket, "message", first_payload)
+
+    :ok = Chat.Domain.Messaging.AckStore.confirm(user_offline, room_id, 1)
+
+    missed_payload =
+      Chat.Envelope.encode(%Chat.Envelope{
+        payload: {:send_message, %Chat.SendMessage{room_id: room_id, content: "missed"}}
+      })
+
+    push(sender_socket, "message", missed_payload)
+
+    {:ok, offline_token, _} = Joken.encode_and_sign(%{"sub" => user_offline}, @signer)
+    {:ok, offline_conn} = connect(Chat.Domain.User.Socket, %{"token" => offline_token})
+    {:ok, _, _} = subscribe_and_join(offline_conn, "room:#{room_id}")
+
+    assert_push("message", _)
+  end
+
+  test "joins without last_sequence and no prior ack does not replay" do
+    room_id = "room_#{System.unique_integer([:positive])}"
+    user_id = "user_fresh_#{System.unique_integer([:positive])}"
+
+    {:ok, token, _} = Joken.encode_and_sign(%{"sub" => user_id}, @signer)
+    {:ok, conn} = connect(Chat.Domain.User.Socket, %{"token" => token})
+    {:ok, _, _} = subscribe_and_join(conn, "room:#{room_id}")
+
+    refute_push("message", _)
+  end
 end
