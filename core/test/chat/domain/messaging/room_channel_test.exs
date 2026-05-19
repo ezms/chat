@@ -37,4 +37,18 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
     ref = push(socket, "message", payload)
     refute_reply(ref, :ok)
   end
+
+  test "broadcasts message to other users in room", %{socket: socket} do
+    {:ok, token, _} = Joken.encode_and_sign(%{"sub" => "user_2"}, @signer)
+    {:ok, socket2} = connect(Chat.Domain.User.Socket, %{"token" => token})
+    {:ok, _, _socket2} = subscribe_and_join(socket2, "room:lobby")
+
+    payload =
+      Chat.Envelope.encode(%Chat.Envelope{
+        payload: {:send_message, %Chat.SendMessage{room_id: "lobby", content: "oi"}}
+      })
+
+    push(socket, "message", payload)
+    assert_broadcast("message", ^payload)
+  end
 end

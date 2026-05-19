@@ -24,8 +24,12 @@ defmodule Chat.Domain.Messaging.Store do
     end
   end
 
-  def get_history([{"text", room_id}, {"bigint", after_sequence}, {"int", limit}]) do
-    case Xandra.execute(:xandra, @history_query, [room_id, after_sequence, limit]) do
+  def get_history(room_id, after_sequence, limit \\ 50) do
+    case Xandra.execute(:xandra, @history_query, [
+           {"text", room_id},
+           {"bigint", after_sequence},
+           {"int", limit}
+         ]) do
       {:ok, page} -> {:ok, Enum.to_list(page)}
       {:error, reason} -> {:error, reason}
     end
