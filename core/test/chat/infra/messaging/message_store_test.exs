@@ -1,15 +1,16 @@
-defmodule Chat.Domain.Messaging.MessageStoreTest do
+defmodule Chat.Infra.Messaging.MessageStoreTest do
   use ExUnit.Case
 
-  alias Chat.Domain.Messaging.MessageStore
-  alias Chat.Domain.Messaging.HistoryStore
+  alias Chat.Infra.Messaging.MessageStore
+  alias Chat.Infra.Messaging.HistoryStore
 
   setup do
     %{room_id: "room_#{System.unique_integer([:positive])}"}
   end
 
-  test "inserts a message and returns ok", %{room_id: room_id} do
-    assert {:ok, _} = MessageStore.insert(room_id, "user_1", "hello")
+  test "inserts a message and returns sequence_number", %{room_id: room_id} do
+    assert {:ok, sequence_number} = MessageStore.insert(room_id, "user_1", "hello")
+    assert is_integer(sequence_number)
   end
 
   test "sequence_number increments per room", %{room_id: room_id} do

@@ -49,7 +49,11 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
       })
 
     push(socket, "message", payload)
-    assert_broadcast("message", ^payload)
+
+    assert_broadcast("message", broadcast)
+
+    assert %Chat.Envelope{payload: {:message_delivered, %Chat.MessageDelivered{}}} =
+             Chat.Envelope.decode(broadcast)
   end
 
   test "replays missed messages on reconnect with last_sequence", %{socket: socket} do
@@ -83,7 +87,7 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
 
     push(sender_socket, "message", first_payload)
 
-    :ok = Chat.Domain.Messaging.AckStore.confirm(user_offline, room_id, 1)
+    :ok = Chat.Infra.Messaging.AckStore.confirm(user_offline, room_id, 1)
 
     missed_payload =
       Chat.Envelope.encode(%Chat.Envelope{

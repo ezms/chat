@@ -1,8 +1,8 @@
-defmodule Chat.Domain.Messaging.HistoryStoreTest do
+defmodule Chat.Infra.Messaging.HistoryStoreTest do
   use ExUnit.Case
 
-  alias Chat.Domain.Messaging.MessageStore
-  alias Chat.Domain.Messaging.HistoryStore
+  alias Chat.Infra.Messaging.MessageStore
+  alias Chat.Infra.Messaging.HistoryStore
 
   setup do
     %{room_id: "room_#{System.unique_integer([:positive])}"}

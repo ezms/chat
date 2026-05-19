@@ -4,9 +4,11 @@ defmodule Chat.Domain.Messaging.RoomChannel do
   alias Chat.Envelope
   alias Chat.Pong
   alias Chat.SendMessage
+  alias Chat.MessageDelivered
   alias Chat.Ack
-  alias Chat.Domain.Messaging.MessageStore
-  alias Chat.Domain.Messaging.AckStore
+  alias Chat.Infra.Messaging.MessageStore
+  alias Chat.Infra.Messaging.HistoryStore
+  alias Chat.Infra.Messaging.AckStore
 
   @impl true
   def join("room:" <> room_id, %{"last_sequence" => last_sequence}, socket) do
@@ -29,9 +31,27 @@ defmodule Chat.Domain.Messaging.RoomChannel do
 
   @impl true
   def handle_info({:replay, room_id, last_sequence}, socket) do
-    case Chat.Domain.Messaging.HistoryStore.get(room_id, last_sequence) do
-      {:ok, messages} -> Enum.each(messages, fn msg -> push(socket, "message", msg) end)
-      {:error, _} -> :ok
+    case HistoryStore.get(room_id, last_sequence) do
+      {:ok, messages} ->
+        Enum.each(messages, fn msg ->
+          delivered =
+            Envelope.encode(%Envelope{
+              payload:
+                {:message_delivered,
+                 %MessageDelivered{
+                   room_id: msg["room_id"],
+                   sequence_number: msg["sequence_number"],
+                   sender_id: msg["sender_id"],
+                   content: msg["content"],
+                   inserted_at: DateTime.to_unix(msg["inserted_at"], :millisecond)
+                 }}
+            })
+
+          push(socket, "message", delivered)
+        end)
+
+      {:error, _} ->
+        :ok
     end
 
     {:noreply, socket}
@@ -48,8 +68,21 @@ defmodule Chat.Domain.Messaging.RoomChannel do
         sender_id = socket.assigns.user_id
 
         case MessageStore.insert(room_id, sender_id, content) do
-          {:ok, _} ->
-            broadcast!(socket, "message", payload)
+          {:ok, sequence_number} ->
+            delivered =
+              Envelope.encode(%Envelope{
+                payload:
+                  {:message_delivered,
+                   %MessageDelivered{
+                     room_id: room_id,
+                     sequence_number: sequence_number,
+                     sender_id: sender_id,
+                     content: content,
+                     inserted_at: System.os_time(:millisecond)
+                   }}
+              })
+
+            broadcast!(socket, "message", delivered)
             {:noreply, socket}
 
           {:error, _} ->

@@ -1,4 +1,4 @@
-defmodule Chat.Domain.Messaging.HistoryStore do
+defmodule Chat.Infra.Messaging.HistoryStore do
   @history_query """
   SELECT room_id, sequence_number, sender_id, content, inserted_at
   FROM chat.messages

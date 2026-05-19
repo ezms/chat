@@ -1,4 +1,4 @@
-defmodule Chat.Domain.Messaging.AckStore do
+defmodule Chat.Infra.Messaging.AckStore do
   def confirm(user_id, room_id, sequence_number) do
     case Redix.command(:redix, ["SET", "ack:#{user_id}:#{room_id}", sequence_number]) do
       {:ok, _} -> :ok
