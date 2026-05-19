@@ -7,11 +7,19 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
   @secret "test_secret_key_base_must_be_at_least_64_chars_long_xxxxxxxxxxxxxxx"
   @signer Joken.Signer.create("HS256", @secret)
 
+  defp make_token(user_id, room_ids) do
+    {:ok, token, _} =
+      Joken.encode_and_sign(%{"sub" => user_id, "room_ids" => room_ids}, @signer)
+
+    token
+  end
+
   setup do
     Application.put_env(:core, :secret_key_base, @secret)
 
-    {:ok, token, _} = Joken.encode_and_sign(%{"sub" => "user_1"}, @signer)
-    {:ok, socket} = connect(Chat.Domain.User.Socket, %{"token" => token})
+    {:ok, socket} =
+      connect(Chat.Domain.User.Socket, %{"token" => make_token("user_1", ["lobby"])})
+
     {:ok, _, socket} = subscribe_and_join(socket, "room:lobby")
 
     %{socket: socket}
@@ -19,6 +27,13 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
 
   test "joins room successfully", %{socket: socket} do
     assert socket.topic == "room:lobby"
+  end
+
+  test "rejects join when room_id is not in token" do
+    {:ok, socket} =
+      connect(Chat.Domain.User.Socket, %{"token" => make_token("user_1", ["other_room"])})
+
+    assert {:error, %{reason: "unauthorized"}} = subscribe_and_join(socket, "room:lobby")
   end
 
   test "responds pong to ping", %{socket: socket} do
@@ -39,8 +54,9 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
   end
 
   test "broadcasts message to other users in room", %{socket: socket} do
-    {:ok, token, _} = Joken.encode_and_sign(%{"sub" => "user_2"}, @signer)
-    {:ok, socket2} = connect(Chat.Domain.User.Socket, %{"token" => token})
+    {:ok, socket2} =
+      connect(Chat.Domain.User.Socket, %{"token" => make_token("user_2", ["lobby"])})
+
     {:ok, _, _socket2} = subscribe_and_join(socket2, "room:lobby")
 
     payload =
@@ -64,8 +80,9 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
 
     push(socket, "message", payload)
 
-    {:ok, token, _} = Joken.encode_and_sign(%{"sub" => "user_reconnect"}, @signer)
-    {:ok, socket2} = connect(Chat.Domain.User.Socket, %{"token" => token})
+    {:ok, socket2} =
+      connect(Chat.Domain.User.Socket, %{"token" => make_token("user_reconnect", ["lobby"])})
+
     {:ok, _, _} = subscribe_and_join(socket2, "room:lobby", %{"last_sequence" => 0})
 
     assert_push("message", _)
@@ -76,8 +93,9 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
     sender_id = "user_sender_#{System.unique_integer([:positive])}"
     user_offline = "user_offline_#{System.unique_integer([:positive])}"
 
-    {:ok, sender_token, _} = Joken.encode_and_sign(%{"sub" => sender_id}, @signer)
-    {:ok, sender_conn} = connect(Chat.Domain.User.Socket, %{"token" => sender_token})
+    {:ok, sender_conn} =
+      connect(Chat.Domain.User.Socket, %{"token" => make_token(sender_id, [room_id])})
+
     {:ok, _, sender_socket} = subscribe_and_join(sender_conn, "room:#{room_id}")
 
     first_payload =
@@ -96,8 +114,9 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
 
     push(sender_socket, "message", missed_payload)
 
-    {:ok, offline_token, _} = Joken.encode_and_sign(%{"sub" => user_offline}, @signer)
-    {:ok, offline_conn} = connect(Chat.Domain.User.Socket, %{"token" => offline_token})
+    {:ok, offline_conn} =
+      connect(Chat.Domain.User.Socket, %{"token" => make_token(user_offline, [room_id])})
+
     {:ok, _, _} = subscribe_and_join(offline_conn, "room:#{room_id}")
 
     assert_push("message", _)
@@ -107,8 +126,9 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
     room_id = "room_#{System.unique_integer([:positive])}"
     user_id = "user_fresh_#{System.unique_integer([:positive])}"
 
-    {:ok, token, _} = Joken.encode_and_sign(%{"sub" => user_id}, @signer)
-    {:ok, conn} = connect(Chat.Domain.User.Socket, %{"token" => token})
+    {:ok, conn} =
+      connect(Chat.Domain.User.Socket, %{"token" => make_token(user_id, [room_id])})
+
     {:ok, _, _} = subscribe_and_join(conn, "room:#{room_id}")
 
     refute_push("message", _)

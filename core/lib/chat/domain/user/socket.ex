@@ -8,8 +8,16 @@ defmodule Chat.Domain.User.Socket do
     auth = Application.get_env(:core, :auth_module)
 
     case auth.verify(token) do
-      {:ok, user_id} -> {:ok, assign(socket, :user_id, user_id)}
-      {:error, _} -> :error
+      {:ok, %{user_id: user_id, room_ids: room_ids}} ->
+        socket =
+          socket
+          |> assign(:user_id, user_id)
+          |> assign(:room_ids, room_ids)
+
+        {:ok, socket}
+
+      {:error, _} ->
+        :error
     end
   end
 

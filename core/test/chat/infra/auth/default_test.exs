@@ -14,9 +14,16 @@ defmodule Chat.Infra.Auth.DefaultTest do
     token
   end
 
-  test "returns user_id for valid token" do
+  test "returns user_id and room_ids for valid token" do
+    token = generate_token(%{"sub" => "user_123", "room_ids" => ["room_1", "room_2"]})
+
+    assert {:ok, %{user_id: "user_123", room_ids: ["room_1", "room_2"]}} =
+             Chat.Infra.Auth.Default.verify(token)
+  end
+
+  test "returns empty room_ids when claim is absent" do
     token = generate_token(%{"sub" => "user_123"})
-    assert {:ok, "user_123"} = Chat.Infra.Auth.Default.verify(token)
+    assert {:ok, %{user_id: "user_123", room_ids: []}} = Chat.Infra.Auth.Default.verify(token)
   end
 
   test "returns error for invalid token" do

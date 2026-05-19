@@ -12,21 +12,29 @@ defmodule Chat.Domain.Messaging.RoomChannel do
 
   @impl true
   def join("room:" <> room_id, %{"last_sequence" => last_sequence}, socket) do
-    send(self(), {:replay, room_id, last_sequence})
-    {:ok, socket}
+    if room_id in socket.assigns.room_ids do
+      send(self(), {:replay, room_id, last_sequence})
+      {:ok, socket}
+    else
+      {:error, %{reason: "unauthorized"}}
+    end
   end
 
   @impl true
   def join("room:" <> room_id, _params, socket) do
-    case AckStore.last_ack(socket.assigns.user_id, room_id) do
-      {:ok, last_sequence} when last_sequence > 0 ->
-        send(self(), {:replay, room_id, last_sequence})
+    if room_id not in socket.assigns.room_ids do
+      {:error, %{reason: "unauthorized"}}
+    else
+      case AckStore.last_ack(socket.assigns.user_id, room_id) do
+        {:ok, last_sequence} when last_sequence > 0 ->
+          send(self(), {:replay, room_id, last_sequence})
 
-      _ ->
-        :ok
+        _ ->
+          :ok
+      end
+
+      {:ok, socket}
     end
-
-    {:ok, socket}
   end
 
   @impl true

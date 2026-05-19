@@ -8,8 +8,11 @@ defmodule Chat.Infra.Auth.Default do
     signer = Joken.Signer.create("HS256", secret)
 
     case Joken.verify(token, signer) do
-      {:ok, claims} -> {:ok, claims["sub"]}
-      {:error, reason} -> {:error, reason}
+      {:ok, claims} ->
+        {:ok, %{user_id: claims["sub"], room_ids: Map.get(claims, "room_ids", [])}}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 end

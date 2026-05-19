@@ -16,8 +16,13 @@ defmodule Chat.Domain.User.SocketTest do
   defp token(claims), do: elem(Joken.encode_and_sign(claims, @signer), 1)
 
   test "connects with valid token" do
-    assert {:ok, _socket} =
-             connect(Chat.Domain.User.Socket, %{"token" => token(%{"sub" => "user_1"})})
+    assert {:ok, socket} =
+             connect(Chat.Domain.User.Socket, %{
+               "token" => token(%{"sub" => "user_1", "room_ids" => ["lobby"]})
+             })
+
+    assert socket.assigns.user_id == "user_1"
+    assert socket.assigns.room_ids == ["lobby"]
   end
 
   test "rejects connection without token" do
