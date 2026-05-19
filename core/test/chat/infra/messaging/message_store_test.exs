@@ -14,10 +14,10 @@ defmodule Chat.Infra.Messaging.MessageStoreTest do
   end
 
   test "sequence_number increments per room", %{room_id: room_id} do
-    assert {:ok, _} = MessageStore.insert(room_id, "user_1", "first")
+    {:ok, first_sequence} = MessageStore.insert(room_id, "user_1", "first")
     assert {:ok, _} = MessageStore.insert(room_id, "user_1", "second")
 
-    {:ok, messages} = HistoryStore.get(room_id, 0)
+    {:ok, messages} = HistoryStore.get(room_id, first_sequence - 1)
     assert length(messages) == 2
   end
 end
