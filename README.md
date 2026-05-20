@@ -315,20 +315,26 @@ Profiles are named by feature, not by technology.
 The service delegates token validation to the integrator via the `Chat.Auth` behaviour.
 
 ```elixir
-defmodule Chat.Auth do
+defmodule Chat.Contracts.Auth do
   @callback verify(token :: String.t()) ::
-    {:ok, user_id :: String.t()} | {:error, reason :: atom()}
+    {:ok, %{user_id: String.t(), room_ids: [String.t()]}} | {:error, term()}
 end
 ```
 
-The default implementation validates JWT tokens. To use a different auth mechanism, implement the behaviour and configure it:
+The default implementation validates JWT tokens signed with `SECRET_KEY_BASE`. The token must carry:
+- `sub` — the user identifier
+- `room_ids` — list of room identifiers the user is allowed to join
+
+The service enforces `room_ids` at join time — a connection attempt to a room not listed in the token is rejected with `unauthorized`. Issuing tokens with the correct `room_ids` is the integrator's responsibility.
+
+To use a different auth mechanism, implement the behaviour and configure it:
 
 ```elixir
 # config/config.exs
-config :chat_core, auth: MyApp.CustomAuth
+config :core, auth: MyApp.CustomAuth
 ```
 
-The service receives only a `user_id` from `verify/1`. User profiles, display names, and avatars are the integrator's responsibility.
+User profiles, display names, and avatars are the integrator's responsibility — the service only receives `user_id` and `room_ids` from `verify/1`.
 
 ### Object Storage
 
@@ -363,22 +369,24 @@ Omit the `local-queue` profile when using an external broker.
 
 ### RabbitMQ Events
 
-**Published by the service:**
+> **Planned — M5.** Not yet implemented.
+
+The service will publish domain events to a RabbitMQ topic exchange. Any integrating system subscribes to its own queue — the service has no knowledge of consumers.
+
+**Published by the service (planned):**
 
 | Exchange | Routing Key | Payload |
 |---|---|---|
-| `chat.message.inbound` | `workspace.{id}` | `workspaceId, userId, text, requestId, receivedAt` |
-| `chat.presence` | `workspace.{id}.presence` | `userId, status (online/offline), channelId` |
+| `chat.events` | `message.sent` | `room_id, sender_id, sequence_number, content, inserted_at` |
+| `chat.events` | `presence.changed` | `room_id, user_id, status (online/offline)` |
 
-**Consumed by the service:**
-
-| Queue | Source | Action |
-|---|---|---|
-| `chat.notifications.inbound` | any integrating service | Delivers message to user via WebSocket or offline queue |
+Routing keys follow the pattern `<object>.<verb>`, allowing consumers to bind selectively (e.g. `message.*` for all message events, `#` for everything).
 
 ### gRPC Admin API
 
-Exposed on port `50051`.
+> **Planned — post-M5.** Not yet implemented.
+
+Will be exposed on port `50051` to allow integrating systems to manage rooms and inject messages programmatically.
 
 ```protobuf
 service ChatAdmin {
@@ -393,31 +401,41 @@ service ChatAdmin {
 
 Messages are transmitted as **Protobuf over WebSocket**. The `proto/messages.proto` file is the source of truth — it generates types for both Elixir (via `protoc-gen-elixir`) and TypeScript (via `protoc-gen-es`).
 
-```protobuf
-message ClientFrame {
-  uint64  sequence_number = 1;
-  string  channel         = 2;
-  oneof   payload {
-    SendMessage   send     = 3;
-    AckMessage    ack      = 4;
-    TypingEvent   typing   = 5;
-    PresenceQuery presence = 6;
-  }
-}
+All frames are wrapped in an `Envelope` with a `oneof payload`:
 
-message ServerFrame {
-  uint64  sequence_number = 1;
-  string  channel         = 2;
-  oneof   payload {
-    Message       message  = 3;
-    Ack           ack      = 4;
-    PresenceEvent presence = 5;
-    SystemEvent   system   = 6;
+```protobuf
+message Envelope {
+  oneof payload {
+    Ping             ping             = 1;
+    Pong             pong             = 2;
+    SendMessage      send_message     = 3;
+    MessageDelivered message_delivered = 4;
+    Ack              ack              = 5;
+    TypingEvent      typing_event     = 6;
+    PresenceState    presence_state   = 7;
   }
 }
 ```
 
-**Delivery guarantee:** each message has a `sequence_number` per channel. On reconnect, the client sends `resume: { channel, last_sequence_number }` and the server replays missed messages in order before resuming the normal stream.
+**Client → Server:**
+
+| Message | Description |
+|---|---|
+| `Ping` | Heartbeat — server replies with `Pong` |
+| `SendMessage` | Send a message to a room (`room_id`, `content`) |
+| `Ack` | Confirm delivery of a message (`room_id`, `sequence_number`) |
+| `TypingEvent` | Typing indicator (`room_id`, `is_typing`) — server injects `user_id` before broadcasting |
+
+**Server → Client:**
+
+| Message | Description |
+|---|---|
+| `Pong` | Heartbeat reply |
+| `MessageDelivered` | Message confirmed and stored (`room_id`, `sequence_number`, `sender_id`, `content`, `inserted_at`) |
+| `PresenceState` | Current online users in the room (`user_ids`) — pushed on join and on every presence change |
+| `TypingEvent` | Typing indicator broadcast with `user_id` injected by the server |
+
+**Delivery guarantee:** `MessageDelivered` carries a monotonically increasing `sequence_number` per room. On reconnect, the client joins with `last_sequence` and the server replays all missed messages before resuming the live stream. The last acknowledged `sequence_number` is also persisted server-side (via `Ack`) so replay works even without client state.
 
 ---
 
@@ -552,12 +570,12 @@ The `proto/messages.proto` dependency is explicit: changes to the protocol trigg
 | Milestone | Description | Complete |
 |---|---|---|
 | **M0** | Foundation — Elixir project, OTP supervision, ScyllaDB schema, Docker standalone, basic CI | ✅ |
-| **M1** | Connection & Auth — UserSocket, Phoenix Channels, Protobuf encoding/decoding, heartbeat | ⬜ |
-| **M2** | Messages & Persistence — send/receive, sequence numbers, Message Store, paginated history | ⬜ |
-| **M3** | Delivery Guarantees — explicit ack, offline queue, replay on reconnect, at-least-once | ⬜ |
-| **M4** | Presence & Rooms — Phoenix Presence, room management, typing indicators, online/offline | ⬜ |
-| **M5** | Media & Files — MinIO/S3 via `Chat.Storage`, file message type, presigned URLs | ⬜ |
-| **M6** | Extended Features — threads, reactions, read receipts, contact directory | ⬜ |
-| **M7** | Search — Meilisearch async indexing, message and contact search API | ⬜ |
-| **M8** | Push Notifications — FCM, APNs, Web Push for fully offline users | ⬜ |
-| **M9** | Backup & Export — periodic export job to object storage | ⬜ |
+| **M1** | Connection & Auth — UserSocket JWT, Phoenix Channels, Protobuf encoding/decoding, heartbeat | ✅ |
+| **M2** | Messages & Persistence — send/receive, sequence numbers, Message Store, paginated history | ✅ |
+| **M3** | Delivery Guarantees — explicit ack, offline queue, replay on reconnect, at-least-once | ✅ |
+| **M4** | Presence & Rooms — Phoenix Presence, typing indicators, room access via JWT `room_ids` | ✅ |
+| **M5** | Event Fan-out — RabbitMQ topic exchange, domain events (`message.sent`, `presence.changed`) | ⬜ |
+| **M6** | Media & Files — MinIO/S3 via `Chat.Storage`, file message type, presigned URLs | ⬜ |
+| **M7** | Extended Features — threads, reactions, read receipts | ⬜ |
+| **M8** | Search — Meilisearch async indexing, message search API | ⬜ |
+| **M9** | Push Notifications — FCM, APNs, Web Push for fully offline users | ⬜ |
