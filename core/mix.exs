@@ -35,6 +35,8 @@ defmodule Chat.Core.MixProject do
       {:xandra, "~> 0.19"},
       {:joken, "~> 2.6"},
       {:redix, "~> 1.5"},
+      {:amqp, "~> 3.3"},
+      {:rabbit_common, "~> 3.13", override: true},
       {:excoveralls, "~> 0.18", only: :test}
     ]
   end

@@ -10,10 +10,11 @@ defmodule Chat.Domain.Messaging.RoomChannel do
   alias Chat.Ack
   alias Chat.Domain.Presence
   alias Chat.Infra.Messaging.MessageStore
-
-  intercept(["presence_diff"])
   alias Chat.Infra.Messaging.HistoryStore
   alias Chat.Infra.Messaging.AckStore
+  alias Chat.Infra.Queue.Publisher
+
+  intercept ["presence_diff"]
 
   @impl true
   def join("room:" <> room_id, %{"last_sequence" => last_sequence}, socket) do
@@ -56,6 +57,12 @@ defmodule Chat.Domain.Messaging.RoomChannel do
     if replay_sequence do
       send(self(), {:replay, room_id, replay_sequence})
     end
+
+    Publisher.publish("presence.changed", %{
+      room_id: room_id,
+      user_id: user_id,
+      status: "online"
+    })
 
     {:noreply, socket}
   end
@@ -129,6 +136,14 @@ defmodule Chat.Domain.Messaging.RoomChannel do
               })
 
             broadcast!(socket, "message", delivered)
+
+            Publisher.publish("message.sent", %{
+              room_id: room_id,
+              sender_id: sender_id,
+              sequence_number: sequence_number,
+              inserted_at: System.os_time(:millisecond)
+            })
+
             {:noreply, socket}
 
           {:error, _} ->
@@ -157,5 +172,18 @@ defmodule Chat.Domain.Messaging.RoomChannel do
       _ ->
         {:noreply, socket}
     end
+  end
+
+  @impl true
+  def terminate(_reason, socket) do
+    room_id = socket.topic |> String.replace_prefix("room:", "")
+
+    Publisher.publish("presence.changed", %{
+      room_id: room_id,
+      user_id: socket.assigns.user_id,
+      status: "offline"
+    })
+
+    :ok
   end
 end
