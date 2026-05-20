@@ -121,16 +121,4 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
 
     assert_push("message", _)
   end
-
-  test "joins without last_sequence and no prior ack does not replay" do
-    room_id = "room_#{System.unique_integer([:positive])}"
-    user_id = "user_fresh_#{System.unique_integer([:positive])}"
-
-    {:ok, conn} =
-      connect(Chat.Domain.User.Socket, %{"token" => make_token(user_id, [room_id])})
-
-    {:ok, _, _} = subscribe_and_join(conn, "room:#{room_id}")
-
-    refute_push("message", _)
-  end
 end

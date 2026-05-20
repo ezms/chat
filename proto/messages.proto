@@ -9,6 +9,8 @@ message Envelope {
     SendMessage send_message = 3;
     MessageDelivered message_delivered = 4;
     Ack ack = 5;
+    TypingEvent typing_event = 6;
+    PresenceState presence_state = 7;
   }
 }
 
@@ -29,6 +31,16 @@ message MessageDelivered {
 }
 
 message Ack {
-    int64 sequence_number = 1;
-    string room_id = 2;
-  }
+  int64 sequence_number = 1;
+  string room_id = 2;
+}
+
+message TypingEvent {
+  string room_id = 1;
+  string user_id = 2;
+  bool is_typing = 3;
+}
+
+message PresenceState {
+  repeated string user_ids = 1;
+}

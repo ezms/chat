@@ -16,6 +16,18 @@ defmodule Chat.Envelope do
   )
 
   field(:ack, 5, type: Chat.Ack, oneof: 0)
+
+  field(:typing_event, 6,
+    type: Chat.TypingEvent,
+    json_name: "typingEvent",
+    oneof: 0
+  )
+
+  field(:presence_state, 7,
+    type: Chat.PresenceState,
+    json_name: "presenceState",
+    oneof: 0
+  )
 end
 
 defmodule Chat.Ping do
@@ -64,4 +76,28 @@ defmodule Chat.Ack do
 
   field(:sequence_number, 1, type: :int64, json_name: "sequenceNumber")
   field(:room_id, 2, type: :string, json_name: "roomId")
+end
+
+defmodule Chat.TypingEvent do
+  @moduledoc false
+
+  use Protobuf,
+    full_name: "chat.TypingEvent",
+    protoc_gen_elixir_version: "0.16.0",
+    syntax: :proto3
+
+  field(:room_id, 1, type: :string, json_name: "roomId")
+  field(:user_id, 2, type: :string, json_name: "userId")
+  field(:is_typing, 3, type: :bool, json_name: "isTyping")
+end
+
+defmodule Chat.PresenceState do
+  @moduledoc false
+
+  use Protobuf,
+    full_name: "chat.PresenceState",
+    protoc_gen_elixir_version: "0.16.0",
+    syntax: :proto3
+
+  field(:user_ids, 1, repeated: true, type: :string, json_name: "userIds")
 end
