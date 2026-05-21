@@ -31,7 +31,8 @@ defmodule Chat.Core.MixProject do
     [
       "test.integration": [
         "cmd docker compose -f ../docker-compose.test.yml up -d --wait",
-        "test --include integration --exclude no_broker"
+        "test --include integration --exclude no_broker",
+        "cmd docker compose -f ../docker-compose.test.yml down"
       ]
     ]
   end
@@ -49,6 +50,10 @@ defmodule Chat.Core.MixProject do
       {:amqp, "~> 3.3"},
       {:rabbit_common, "~> 3.13", override: true},
       {:grpc, "~> 0.9"},
+      {:ex_aws, "~> 2.5"},
+      {:ex_aws_s3, "~> 2.5"},
+      {:hackney, "~> 1.20"},
+      {:sweet_xml, "~> 0.7"},
       {:excoveralls, "~> 0.18", only: :test}
     ]
   end

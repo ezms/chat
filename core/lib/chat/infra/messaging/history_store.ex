@@ -1,6 +1,6 @@
 defmodule Chat.Infra.Messaging.HistoryStore do
   @history_query """
-  SELECT room_id, sequence_number, sender_id, content, inserted_at
+  SELECT room_id, sequence_number, sender_id, content, inserted_at, file_key
   FROM chat.messages
   WHERE room_id = ?
   AND sequence_number > ?

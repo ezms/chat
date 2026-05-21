@@ -11,6 +11,8 @@ message Envelope {
     Ack ack = 5;
     TypingEvent typing_event = 6;
     PresenceState presence_state = 7;
+    SendFile send_file = 8;
+    FileDelivered file_delivered = 9;
   }
 }
 
@@ -43,4 +45,23 @@ message TypingEvent {
 
 message PresenceState {
   repeated string user_ids = 1;
+}
+
+message SendFile {
+  string room_id = 1;
+  string file_key = 2;
+  string filename = 3;
+  string content_type = 4;
+  int64 size = 5;
+}
+
+message FileDelivered {
+  string room_id = 1;
+  int64 sequence_number = 2;
+  string sender_id = 3;
+  string file_key = 4;
+  string filename = 5;
+  string content_type = 6;
+  int64 size = 7;
+  int64 inserted_at = 8;
 }

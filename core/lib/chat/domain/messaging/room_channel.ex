@@ -8,6 +8,8 @@ defmodule Chat.Domain.Messaging.RoomChannel do
   alias Chat.TypingEvent
   alias Chat.PresenceState
   alias Chat.Ack
+  alias Chat.SendFile
+  alias Chat.FileDelivered
   alias Chat.Domain.Presence
   alias Chat.Infra.Messaging.MessageStore
   alias Chat.Infra.Messaging.HistoryStore
@@ -78,20 +80,8 @@ defmodule Chat.Domain.Messaging.RoomChannel do
     case HistoryStore.get(room_id, last_sequence) do
       {:ok, messages} ->
         Enum.each(messages, fn msg ->
-          delivered =
-            Envelope.encode(%Envelope{
-              payload:
-                {:message_delivered,
-                 %MessageDelivered{
-                   room_id: msg["room_id"],
-                   sequence_number: msg["sequence_number"],
-                   sender_id: msg["sender_id"],
-                   content: msg["content"],
-                   inserted_at: DateTime.to_unix(msg["inserted_at"], :millisecond)
-                 }}
-            })
-
-          push(socket, "message", security().encode(delivered, socket.assigns))
+          envelope = build_replay_envelope(msg)
+          push(socket, "message", security().encode(envelope, socket.assigns))
         end)
 
       {:error, _} ->
@@ -99,6 +89,40 @@ defmodule Chat.Domain.Messaging.RoomChannel do
     end
 
     {:noreply, socket}
+  end
+
+  defp build_replay_envelope(%{"file_key" => file_key} = msg) when is_binary(file_key) and file_key != "" do
+    %{"filename" => filename, "content_type" => content_type, "size" => size} =
+      Jason.decode!(msg["content"])
+
+    Envelope.encode(%Envelope{
+      payload:
+        {:file_delivered,
+         %FileDelivered{
+           room_id: msg["room_id"],
+           sequence_number: msg["sequence_number"],
+           sender_id: msg["sender_id"],
+           file_key: file_key,
+           filename: filename,
+           content_type: content_type,
+           size: size,
+           inserted_at: DateTime.to_unix(msg["inserted_at"], :millisecond)
+         }}
+    })
+  end
+
+  defp build_replay_envelope(msg) do
+    Envelope.encode(%Envelope{
+      payload:
+        {:message_delivered,
+         %MessageDelivered{
+           room_id: msg["room_id"],
+           sequence_number: msg["sequence_number"],
+           sender_id: msg["sender_id"],
+           content: msg["content"],
+           inserted_at: DateTime.to_unix(msg["inserted_at"], :millisecond)
+         }}
+    })
   end
 
   @impl true
@@ -162,6 +186,47 @@ defmodule Chat.Domain.Messaging.RoomChannel do
                 inserted_at: System.os_time(:millisecond)
               })
 
+              {:noreply, socket}
+
+            {:error, _} ->
+              {:reply, {:error, %{}}, socket}
+          end
+
+        %Envelope{
+          payload:
+            {:send_file,
+             %SendFile{
+               room_id: room_id,
+               file_key: file_key,
+               filename: filename,
+               content_type: content_type,
+               size: size
+             }}
+        } ->
+          sender_id = socket.assigns.user_id
+
+          case MessageStore.insert_file(room_id, sender_id, file_key, filename, content_type, size) do
+            {:ok, sequence_number} ->
+              delivered =
+                security().encode(
+                  Envelope.encode(%Envelope{
+                    payload:
+                      {:file_delivered,
+                       %FileDelivered{
+                         room_id: room_id,
+                         sequence_number: sequence_number,
+                         sender_id: sender_id,
+                         file_key: file_key,
+                         filename: filename,
+                         content_type: content_type,
+                         size: size,
+                         inserted_at: System.os_time(:millisecond)
+                       }}
+                  }),
+                  socket.assigns
+                )
+
+              broadcast!(socket, "message", delivered)
               {:noreply, socket}
 
             {:error, _} ->

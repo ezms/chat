@@ -28,6 +28,14 @@ defmodule Chat.Envelope do
     json_name: "presenceState",
     oneof: 0
   )
+
+  field(:send_file, 8, type: Chat.SendFile, json_name: "sendFile", oneof: 0)
+
+  field(:file_delivered, 9,
+    type: Chat.FileDelivered,
+    json_name: "fileDelivered",
+    oneof: 0
+  )
 end
 
 defmodule Chat.Ping do
@@ -100,4 +108,37 @@ defmodule Chat.PresenceState do
     syntax: :proto3
 
   field(:user_ids, 1, repeated: true, type: :string, json_name: "userIds")
+end
+
+defmodule Chat.SendFile do
+  @moduledoc false
+
+  use Protobuf,
+    full_name: "chat.SendFile",
+    protoc_gen_elixir_version: "0.16.0",
+    syntax: :proto3
+
+  field(:room_id, 1, type: :string, json_name: "roomId")
+  field(:file_key, 2, type: :string, json_name: "fileKey")
+  field(:filename, 3, type: :string)
+  field(:content_type, 4, type: :string, json_name: "contentType")
+  field(:size, 5, type: :int64)
+end
+
+defmodule Chat.FileDelivered do
+  @moduledoc false
+
+  use Protobuf,
+    full_name: "chat.FileDelivered",
+    protoc_gen_elixir_version: "0.16.0",
+    syntax: :proto3
+
+  field(:room_id, 1, type: :string, json_name: "roomId")
+  field(:sequence_number, 2, type: :int64, json_name: "sequenceNumber")
+  field(:sender_id, 3, type: :string, json_name: "senderId")
+  field(:file_key, 4, type: :string, json_name: "fileKey")
+  field(:filename, 5, type: :string)
+  field(:content_type, 6, type: :string, json_name: "contentType")
+  field(:size, 7, type: :int64)
+  field(:inserted_at, 8, type: :int64, json_name: "insertedAt")
 end

@@ -133,7 +133,11 @@ services:
       RABBITMQ_URL: ${RABBITMQ_URL:-amqp://chat:chat@rabbitmq:5672}
       MEILISEARCH_URL: ${MEILISEARCH_URL:-}
       MEILISEARCH_KEY: ${MEILISEARCH_KEY:-}
-      STORAGE_URL: ${STORAGE_URL:-}
+      MINIO_HOST: ${MINIO_HOST:-minio}
+      MINIO_PORT: ${MINIO_PORT:-9000}
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-chatadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-changeme}
+      MINIO_BUCKET: ${MINIO_BUCKET:-chat}
     depends_on:
       scylladb:
         condition: service_healthy

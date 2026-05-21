@@ -15,5 +15,7 @@ defmodule Chat.Infra.Database.Schema do
   ) WITH CLUSTERING ORDER BY (sequence_number ASC)
   """
 
-  def statements, do: [@keyspace_query, @messages_query]
+  @add_file_key_query "ALTER TABLE chat.messages ADD file_key text"
+
+  def statements, do: [@keyspace_query, @messages_query, @add_file_key_query]
 end
