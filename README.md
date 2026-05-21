@@ -369,11 +369,9 @@ Omit the `local-queue` profile when using an external broker.
 
 ### RabbitMQ Events
 
-> **Planned — M5.** Not yet implemented.
+The service publishes domain events to a RabbitMQ topic exchange. Any integrating system subscribes to its own queue — the service has no knowledge of consumers.
 
-The service will publish domain events to a RabbitMQ topic exchange. Any integrating system subscribes to its own queue — the service has no knowledge of consumers.
-
-**Published by the service (planned):**
+**Published by the service:**
 
 | Exchange | Routing Key | Payload |
 |---|---|---|
@@ -570,7 +568,7 @@ The `proto/messages.proto` dependency is explicit: changes to the protocol trigg
 | **M2** | Messages & Persistence — send/receive, sequence numbers, Message Store, paginated history | ✅ |
 | **M3** | Delivery Guarantees — explicit ack, offline queue, replay on reconnect, at-least-once | ✅ |
 | **M4** | Presence & Rooms — Phoenix Presence, typing indicators, room access via JWT `room_ids` | ✅ |
-| **M5** | Event Fan-out — RabbitMQ topic exchange, domain events (`message.sent`, `presence.changed`) | ⬜ |
+| **M5** | Event Fan-out — RabbitMQ topic exchange, domain events (`message.sent`, `presence.changed`); gRPC Admin API (`GetHistory`, `SendSystemMsg`) | ✅ |
 | **M6** | Media & Files — MinIO/S3 via `Chat.Storage`, file message type, presigned URLs | ⬜ |
 | **M7** | Extended Features — threads, reactions, read receipts | ⬜ |
 | **M8** | Search — Meilisearch async indexing, message search API | ⬜ |

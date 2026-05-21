@@ -44,11 +44,14 @@ defmodule Chat.Infra.Grpc.AdminTest do
       assert hd(messages)["sender_id"] == sender_id
     end
 
-    test "returns empty list for room with no messages" do
+    test "streams nothing for room with no messages" do
       room_id = "room_grpc_empty_#{System.unique_integer([:positive])}"
 
-      {:ok, messages} = Chat.Infra.Messaging.HistoryStore.get(room_id, 0)
-      assert messages == []
+      assert :ok =
+               Chat.Infra.Grpc.Admin.get_history(
+                 %Chat.Admin.HistoryRequest{room_id: room_id, from_sequence: 0},
+                 nil
+               )
     end
   end
 
@@ -63,23 +66,13 @@ defmodule Chat.Infra.Grpc.AdminTest do
       {:ok, _, _} = subscribe_and_join(conn, "room:#{room_id}")
       assert_push("message", _presence)
 
-      content = "system alert"
+      result =
+        Chat.Infra.Grpc.Admin.send_system_msg(
+          %Chat.Admin.SystemMessageRequest{room_id: room_id, content: "system alert"},
+          nil
+        )
 
-      payload =
-        Chat.Envelope.encode(%Chat.Envelope{
-          payload:
-            {:message_delivered,
-             %Chat.MessageDelivered{
-               room_id: room_id,
-               sequence_number: 0,
-               sender_id: "system",
-               content: content,
-               inserted_at: System.os_time(:millisecond)
-             }}
-        })
-
-      Chat.Endpoint.broadcast!("room:#{room_id}", "message", payload)
-
+      assert %Chat.Admin.SystemAck{} = result
       assert_push("message", pushed)
 
       assert %Chat.Envelope{
