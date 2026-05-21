@@ -18,12 +18,8 @@ defmodule Chat.Infra.Queue.Connection do
   @impl true
   def init(_opts) do
     url = Application.get_env(:core, :rabbitmq_url, "amqp://chat:chat@localhost:5672")
-    state = %{url: url, conn: nil, channel: nil}
-
-    case open(url) do
-      {:ok, connected} -> {:ok, Map.merge(state, connected)}
-      {:error, _} -> schedule_reconnect(state)
-    end
+    send(self(), :reconnect)
+    {:ok, %{url: url, conn: nil, channel: nil}}
   end
 
   @impl true
@@ -44,13 +40,15 @@ defmodule Chat.Infra.Queue.Connection do
 
       {:error, reason} ->
         Logger.warning("RabbitMQ reconnect failed: #{inspect(reason)}")
-        schedule_reconnect(state)
+        Process.send_after(self(), :reconnect, @reconnect_interval)
+        {:noreply, state}
     end
   end
 
-  def handle_info({:DOWN, _ref, :process, _pid, reason}, %{url: url} = state) do
+  def handle_info({:DOWN, _ref, :process, _pid, reason}, state) do
     Logger.warning("RabbitMQ connection lost: #{inspect(reason)}, reconnecting...")
-    schedule_reconnect(%{state | url: url, conn: nil, channel: nil})
+    Process.send_after(self(), :reconnect, @reconnect_interval)
+    {:noreply, %{state | conn: nil, channel: nil}}
   end
 
   defp open(url) do
@@ -60,10 +58,5 @@ defmodule Chat.Infra.Queue.Connection do
       Process.monitor(conn.pid)
       {:ok, %{conn: conn, channel: channel}}
     end
-  end
-
-  defp schedule_reconnect(state) do
-    Process.send_after(self(), :reconnect, @reconnect_interval)
-    {:ok, %{state | conn: nil, channel: nil}}
   end
 end

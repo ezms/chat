@@ -88,6 +88,12 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
     assert_push("message", _)
   end
 
+  test "terminates cleanly on disconnect", %{socket: socket} do
+    Process.flag(:trap_exit, true)
+    close(socket)
+    assert_receive {:EXIT, _, _}
+  end
+
   test "replays missed messages via stored ack on reconnect" do
     room_id = "room_#{System.unique_integer([:positive])}"
     sender_id = "user_sender_#{System.unique_integer([:positive])}"

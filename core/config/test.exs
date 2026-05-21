@@ -12,3 +12,4 @@ config :core,
 config :core, :scylladb_url, System.get_env("SCYLLADB_HOST", "scylladb") <> ":9042"
 config :core, :redis_host, System.get_env("REDIS_HOST", "redis")
 config :core, :redis_port, String.to_integer(System.get_env("REDIS_PORT", "6379"))
+config :core, :rabbitmq_url, System.get_env("RABBITMQ_URL", "amqp://chat:chat@rabbitmq-test:5672")

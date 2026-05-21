@@ -1,0 +1,13 @@
+services:
+  rabbitmq-test:
+    image: rabbitmq:4.0-management-alpine
+    ports:
+      - "5673:5672"
+    environment:
+      RABBITMQ_DEFAULT_USER: chat
+      RABBITMQ_DEFAULT_PASS: chat
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10

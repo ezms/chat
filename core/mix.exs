@@ -8,10 +8,12 @@ defmodule Chat.Core.MixProject do
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
+      aliases: aliases(),
       test_coverage: [tool: ExCoveralls, minimum_coverage: 80],
       preferred_cli_env: [
         coveralls: :test,
-        "coveralls.github": :test
+        "coveralls.github": :test,
+        "test.integration": :test
       ]
     ]
   end
@@ -25,6 +27,15 @@ defmodule Chat.Core.MixProject do
   end
 
   # Run "mix help deps" to learn about dependencies.
+  defp aliases do
+    [
+      "test.integration": [
+        "cmd docker compose -f ../docker-compose.test.yml up -d --wait",
+        "test --include integration --exclude no_broker"
+      ]
+    ]
+  end
+
   defp deps do
     [
       {:phoenix, "~> 1.7"},
@@ -37,6 +48,7 @@ defmodule Chat.Core.MixProject do
       {:redix, "~> 1.5"},
       {:amqp, "~> 3.3"},
       {:rabbit_common, "~> 3.13", override: true},
+      {:grpc, "~> 0.9"},
       {:excoveralls, "~> 0.18", only: :test}
     ]
   end

@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package chat.admin;
+
+service ChatAdmin {
+  rpc GetHistory    (HistoryRequest)       returns (stream HistoryMessage);
+  rpc SendSystemMsg (SystemMessageRequest) returns (SystemAck);
+}
+
+message HistoryRequest {
+  string room_id       = 1;
+  int64  from_sequence = 2;
+}
+
+message HistoryMessage {
+  string room_id         = 1;
+  int64  sequence_number = 2;
+  string sender_id       = 3;
+  bytes  content         = 4;
+  int64  inserted_at     = 5;
+}
+
+message SystemMessageRequest {
+  string room_id  = 1;
+  bytes  content  = 2;
+}
+
+message SystemAck {}

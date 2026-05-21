@@ -3,13 +3,17 @@ defmodule Chat.Core do
 
   @impl true
   def start(_type, _args) do
+    grpc_port = Application.get_env(:core, :grpc_port, 50051)
+
     children = [
       Chat.Infra.Database.Supervisor,
       Chat.Infra.Redis.Supervisor,
       Chat.Infra.Queue.Supervisor,
       {Phoenix.PubSub, name: Chat.PubSub},
       Chat.Domain.Presence,
-      Chat.Endpoint
+      Chat.Endpoint,
+      {GRPC.Client.Supervisor, []},
+      {GRPC.Server.Supervisor, endpoint: Chat.Infra.Grpc.Endpoint, port: grpc_port}
     ]
 
     options = [strategy: :one_for_one, name: Chat.Core.Supervisor]

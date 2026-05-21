@@ -384,16 +384,12 @@ Routing keys follow the pattern `<object>.<verb>`, allowing consumers to bind se
 
 ### gRPC Admin API
 
-> **Planned — post-M5.** Not yet implemented.
-
-Will be exposed on port `50051` to allow integrating systems to manage rooms and inject messages programmatically.
+Exposed on port `50051`. The service does not manage room lifecycle — room creation and membership are the integrator's responsibility (enforced via JWT `room_ids`). The Admin API covers operational access: reading history and injecting system messages.
 
 ```protobuf
 service ChatAdmin {
-  rpc CreateRoom     (CreateRoomRequest)    returns (Room);
-  rpc AddMember      (AddMemberRequest)     returns (Member);
-  rpc GetHistory     (HistoryRequest)       returns (stream Message);
-  rpc SendSystemMsg  (SystemMessageRequest) returns (Ack);
+  rpc GetHistory    (HistoryRequest)       returns (stream HistoryMessage);
+  rpc SendSystemMsg (SystemMessageRequest) returns (SystemAck);
 }
 ```
 

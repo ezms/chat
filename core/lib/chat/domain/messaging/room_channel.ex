@@ -14,7 +14,7 @@ defmodule Chat.Domain.Messaging.RoomChannel do
   alias Chat.Infra.Messaging.AckStore
   alias Chat.Infra.Queue.Publisher
 
-  intercept ["presence_diff"]
+  intercept(["presence_diff"])
 
   @impl true
   def join("room:" <> room_id, %{"last_sequence" => last_sequence}, socket) do
