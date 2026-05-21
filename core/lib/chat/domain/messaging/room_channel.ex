@@ -16,6 +16,9 @@ defmodule Chat.Domain.Messaging.RoomChannel do
 
   intercept(["presence_diff"])
 
+  defp security,
+    do: Application.get_env(:core, :channel_security, Chat.Infra.ChannelSecurity.Passthrough)
+
   @impl true
   def join("room:" <> room_id, %{"last_sequence" => last_sequence}, socket) do
     if room_id in socket.assigns.room_ids do
@@ -85,7 +88,7 @@ defmodule Chat.Domain.Messaging.RoomChannel do
                  }}
             })
 
-          push(socket, "message", delivered)
+          push(socket, "message", security().encode(delivered, socket.assigns))
         end)
 
       {:error, _} ->
@@ -102,75 +105,93 @@ defmodule Chat.Domain.Messaging.RoomChannel do
     push(
       socket,
       "message",
-      Envelope.encode(%Envelope{
-        payload: {:presence_state, %PresenceState{user_ids: current_users}}
-      })
+      security().encode(
+        Envelope.encode(%Envelope{
+          payload: {:presence_state, %PresenceState{user_ids: current_users}}
+        }),
+        socket.assigns
+      )
     )
 
     {:noreply, socket}
   end
 
   @impl true
-  def handle_in("message", payload, socket) do
-    case Envelope.decode(payload) do
-      %Envelope{payload: {:ping, _}} ->
-        response = Envelope.encode(%Envelope{payload: {:pong, %Pong{}}})
-        {:reply, {:ok, response}, socket}
+  def handle_in("message", raw_payload, socket) do
+    with {:ok, payload} <- security().decode(raw_payload, socket.assigns) do
+      case Envelope.decode(payload) do
+        %Envelope{payload: {:ping, _}} ->
+          response =
+            security().encode(
+              Envelope.encode(%Envelope{payload: {:pong, %Pong{}}}),
+              socket.assigns
+            )
 
-      %Envelope{payload: {:send_message, %SendMessage{room_id: room_id, content: content}}} ->
-        sender_id = socket.assigns.user_id
+          {:reply, {:ok, response}, socket}
 
-        case MessageStore.insert(room_id, sender_id, content) do
-          {:ok, sequence_number} ->
-            delivered =
-              Envelope.encode(%Envelope{
-                payload:
-                  {:message_delivered,
-                   %MessageDelivered{
-                     room_id: room_id,
-                     sequence_number: sequence_number,
-                     sender_id: sender_id,
-                     content: content,
-                     inserted_at: System.os_time(:millisecond)
-                   }}
+        %Envelope{payload: {:send_message, %SendMessage{room_id: room_id, content: content}}} ->
+          sender_id = socket.assigns.user_id
+
+          case MessageStore.insert(room_id, sender_id, content) do
+            {:ok, sequence_number} ->
+              delivered =
+                security().encode(
+                  Envelope.encode(%Envelope{
+                    payload:
+                      {:message_delivered,
+                       %MessageDelivered{
+                         room_id: room_id,
+                         sequence_number: sequence_number,
+                         sender_id: sender_id,
+                         content: content,
+                         inserted_at: System.os_time(:millisecond)
+                       }}
+                  }),
+                  socket.assigns
+                )
+
+              broadcast!(socket, "message", delivered)
+
+              Publisher.publish("message.sent", %{
+                room_id: room_id,
+                sender_id: sender_id,
+                sequence_number: sequence_number,
+                inserted_at: System.os_time(:millisecond)
               })
 
-            broadcast!(socket, "message", delivered)
+              {:noreply, socket}
 
-            Publisher.publish("message.sent", %{
-              room_id: room_id,
-              sender_id: sender_id,
-              sequence_number: sequence_number,
-              inserted_at: System.os_time(:millisecond)
-            })
+            {:error, _} ->
+              {:reply, {:error, %{}}, socket}
+          end
 
-            {:noreply, socket}
+        %Envelope{payload: {:ack, %Ack{room_id: room_id, sequence_number: sequence_number}}} ->
+          :ok = AckStore.confirm(socket.assigns.user_id, room_id, sequence_number)
+          {:noreply, socket}
 
-          {:error, _} ->
-            {:reply, {:error, %{}}, socket}
-        end
+        %Envelope{payload: {:typing_event, %TypingEvent{room_id: room_id, is_typing: is_typing}}} ->
+          event =
+            security().encode(
+              Envelope.encode(%Envelope{
+                payload:
+                  {:typing_event,
+                   %TypingEvent{
+                     room_id: room_id,
+                     user_id: socket.assigns.user_id,
+                     is_typing: is_typing
+                   }}
+              }),
+              socket.assigns
+            )
 
-      %Envelope{payload: {:ack, %Ack{room_id: room_id, sequence_number: sequence_number}}} ->
-        :ok = AckStore.confirm(socket.assigns.user_id, room_id, sequence_number)
-        {:noreply, socket}
+          broadcast!(socket, "message", event)
+          {:noreply, socket}
 
-      %Envelope{payload: {:typing_event, %TypingEvent{room_id: room_id, is_typing: is_typing}}} ->
-        event =
-          Envelope.encode(%Envelope{
-            payload:
-              {:typing_event,
-               %TypingEvent{
-                 room_id: room_id,
-                 user_id: socket.assigns.user_id,
-                 is_typing: is_typing
-               }}
-          })
-
-        broadcast!(socket, "message", event)
-        {:noreply, socket}
-
-      _ ->
-        {:noreply, socket}
+        _ ->
+          {:noreply, socket}
+      end
+    else
+      {:error, _} -> {:noreply, socket}
     end
   end
 

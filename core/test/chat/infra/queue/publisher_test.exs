@@ -29,7 +29,9 @@ defmodule Chat.Infra.Queue.PublisherTest do
 
   defp wait_for_connection(retries) do
     case Chat.Infra.Queue.Connection.channel() do
-      {:ok, _} -> :ok
+      {:ok, _} ->
+        :ok
+
       {:error, :not_connected} ->
         Process.sleep(500)
         wait_for_connection(retries - 1)
