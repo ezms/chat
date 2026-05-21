@@ -569,7 +569,8 @@ The `proto/messages.proto` dependency is explicit: changes to the protocol trigg
 | **M3** | Delivery Guarantees — explicit ack, offline queue, replay on reconnect, at-least-once | ✅ |
 | **M4** | Presence & Rooms — Phoenix Presence, typing indicators, room access via JWT `room_ids` | ✅ |
 | **M5** | Event Fan-out — RabbitMQ topic exchange, domain events (`message.sent`, `presence.changed`); gRPC Admin API (`GetHistory`, `SendSystemMsg`) | ✅ |
-| **M6** | Media & Files — MinIO/S3 via `Chat.Storage`, file message type, presigned URLs | ⬜ |
-| **M7** | Extended Features — threads, reactions, read receipts | ⬜ |
-| **M8** | Search — Meilisearch async indexing, message search API | ⬜ |
-| **M9** | Push Notifications — FCM, APNs, Web Push for fully offline users | ⬜ |
+| **M6** | Channel Security — `ChannelSecurity` behaviour, AES-256-GCM payload encryption, ECDH key exchange on connect | ⬜ |
+| **M7** | Media & Files — MinIO/S3 via `Chat.Storage`, file message type, presigned URLs | ⬜ |
+| **M8** | Extended Features — threads, reactions, read receipts | ⬜ |
+| **M9** | Search — Meilisearch async indexing, message search API | ⬜ |
+| **M10** | Push Notifications — FCM, APNs, Web Push for fully offline users | ⬜ |

@@ -6,4 +6,7 @@ defmodule Chat.Infra.ChannelSecurity.Passthrough do
 
   @impl true
   def decode(payload, _assigns), do: {:ok, payload}
+
+  @impl true
+  def derive_session_key(_client_pub_key), do: {<<>>, <<>>}
 end

@@ -23,7 +23,7 @@ defmodule Chat.Domain.Messaging.RoomChannel do
   def join("room:" <> room_id, %{"last_sequence" => last_sequence}, socket) do
     if room_id in socket.assigns.room_ids do
       send(self(), {:after_join, room_id, last_sequence})
-      {:ok, socket}
+      {:ok, join_reply(socket), socket}
     else
       {:error, %{reason: "unauthorized"}}
     end
@@ -35,9 +35,12 @@ defmodule Chat.Domain.Messaging.RoomChannel do
       {:error, %{reason: "unauthorized"}}
     else
       send(self(), {:after_join, room_id, nil})
-      {:ok, socket}
+      {:ok, join_reply(socket), socket}
     end
   end
+
+  defp join_reply(%{assigns: %{server_pub_key: key}}), do: %{server_pub_key: key}
+  defp join_reply(_socket), do: %{}
 
   @impl true
   def handle_info({:after_join, room_id, last_sequence}, socket) do

@@ -12,4 +12,8 @@ defmodule Chat.Infra.ChannelSecurity.PassthroughTest do
     payload = <<1, 2, 3>>
     assert Passthrough.decode(payload, %{}) == {:ok, payload}
   end
+
+  test "derive_session_key returns empty binaries" do
+    assert {<<>>, <<>>} = Passthrough.derive_session_key(<<1, 2, 3>>)
+  end
 end
