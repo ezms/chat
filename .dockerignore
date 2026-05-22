@@ -1,0 +1,9 @@
+.git
+.github
+.devcontainer
+**/deps
+**/_build
+**/node_modules
+**/*.md
+docs
+demo
