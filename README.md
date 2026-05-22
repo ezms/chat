@@ -26,7 +26,6 @@ A standalone, generic and integrable real-time messaging service. Designed to be
 - [Development](#development)
 - [Testing](#testing)
 - [CI/CD](#cicd)
-- [Roadmap](#roadmap)
 
 ---
 
@@ -632,21 +631,3 @@ The `proto/messages.proto` dependency is explicit: changes to the protocol trigg
 | `NPM_TOKEN` | npm publish token — publishes `@chat/widget` |
 | `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN` | Optional — mirrors core image to Docker Hub |
 | `CC_TEST_REPORTER_ID` | CodeClimate reporter ID for coverage upload |
-
----
-
-## Roadmap
-
-| Milestone | Description | Complete |
-|---|---|---|
-| **M0** | Foundation — Elixir project, OTP supervision, ScyllaDB schema, Docker standalone, basic CI | ✅ |
-| **M1** | Connection & Auth — UserSocket JWT, Phoenix Channels, Protobuf encoding/decoding, heartbeat | ✅ |
-| **M2** | Messages & Persistence — send/receive, sequence numbers, Message Store, paginated history | ✅ |
-| **M3** | Delivery Guarantees — explicit ack, offline queue, replay on reconnect, at-least-once | ✅ |
-| **M4** | Presence & Rooms — Phoenix Presence, typing indicators, room access via JWT `room_ids` | ✅ |
-| **M5** | Event Fan-out — RabbitMQ topic exchange, domain events (`message.sent`, `presence.changed`); gRPC Admin API (`GetHistory`, `SendSystemMsg`) | ✅ |
-| **M6** | Channel Security — `ChannelSecurity` behaviour, AES-256-GCM payload encryption, ECDH key exchange on connect | ✅ |
-| **M7** | Media & Files — MinIO/S3 via `Chat.Contracts.Storage`, presigned upload/download, `SendFile`/`FileDelivered` messages | ✅ |
-| **M8** | Extended Features — threads, reactions, read receipts | ✅ |
-| **M9** | Search — Meilisearch async indexing, message search API | ✅ |
-| **M10** | Push Notifications — `push.notify` RabbitMQ event; integrator owns FCM/APNs/Web Push delivery | ✅ |
