@@ -16,6 +16,7 @@ defmodule Chat.Infra.Grpc.AdminTest do
 
   setup do
     Application.put_env(:core, :secret_key_base, @secret)
+    Application.delete_env(:core, :auth_module)
     :ok
   end
 

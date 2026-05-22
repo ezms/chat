@@ -6,8 +6,19 @@ defmodule Chat.Infra.Database.Migrator do
 
     Enum.each(Chat.Infra.Database.Schema.statements(), fn statement ->
       case Xandra.execute(conn, statement) do
-        {:ok, _} -> :ok
-        {:error, error} -> Logger.error("Migration failed: #{inspect(error)}")
+        {:ok, _} ->
+          :ok
+
+        {:error, %Xandra.Error{message: msg}} when is_binary(msg) ->
+          if String.contains?(msg, "conflicts with an existing column") or
+               String.contains?(msg, "already exists") do
+            :ok
+          else
+            Logger.error("Migration failed: #{msg}")
+          end
+
+        {:error, error} ->
+          Logger.error("Migration failed: #{inspect(error)}")
       end
     end)
   end

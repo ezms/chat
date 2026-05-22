@@ -13,6 +13,14 @@ message Envelope {
     PresenceState presence_state = 7;
     SendFile send_file = 8;
     FileDelivered file_delivered = 9;
+    AddReaction add_reaction = 10;
+    RemoveReaction remove_reaction = 11;
+    ReactionUpdate reaction_update = 12;
+    ReadReceipt read_receipt = 13;
+    ReadUpdate read_update = 14;
+    SendReply send_reply = 15;
+    ReplyDelivered reply_delivered = 16;
+    ThreadUpdate thread_update = 17;
   }
 }
 
@@ -64,4 +72,55 @@ message FileDelivered {
   string content_type = 6;
   int64 size = 7;
   int64 inserted_at = 8;
+}
+
+message AddReaction {
+  string room_id = 1;
+  int64 sequence_number = 2;
+  string emoji = 3;
+}
+
+message RemoveReaction {
+  string room_id = 1;
+  int64 sequence_number = 2;
+}
+
+message ReactionUpdate {
+  string room_id = 1;
+  int64 sequence_number = 2;
+  string user_id = 3;
+  string emoji = 4;
+  bool removed = 5;
+}
+
+message ReadReceipt {
+  string room_id = 1;
+  int64 sequence_number = 2;
+}
+
+message ReadUpdate {
+  string room_id = 1;
+  string user_id = 2;
+  int64 sequence_number = 3;
+}
+
+message SendReply {
+  string room_id = 1;
+  int64 parent_sequence_number = 2;
+  bytes content = 3;
+}
+
+message ReplyDelivered {
+  string room_id = 1;
+  int64 parent_sequence_number = 2;
+  int64 sequence_number = 3;
+  string sender_id = 4;
+  bytes content = 5;
+  int64 inserted_at = 6;
+}
+
+message ThreadUpdate {
+  string room_id = 1;
+  int64 parent_sequence_number = 2;
+  int64 reply_count = 3;
 }

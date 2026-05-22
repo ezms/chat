@@ -36,6 +36,21 @@ defmodule Chat.Envelope do
     json_name: "fileDelivered",
     oneof: 0
   )
+
+  field(:add_reaction, 10, type: Chat.AddReaction, json_name: "addReaction", oneof: 0)
+  field(:remove_reaction, 11, type: Chat.RemoveReaction, json_name: "removeReaction", oneof: 0)
+
+  field(:reaction_update, 12,
+    type: Chat.ReactionUpdate,
+    json_name: "reactionUpdate",
+    oneof: 0
+  )
+
+  field(:read_receipt, 13, type: Chat.ReadReceipt, json_name: "readReceipt", oneof: 0)
+  field(:read_update, 14, type: Chat.ReadUpdate, json_name: "readUpdate", oneof: 0)
+  field(:send_reply, 15, type: Chat.SendReply, json_name: "sendReply", oneof: 0)
+  field(:reply_delivered, 16, type: Chat.ReplyDelivered, json_name: "replyDelivered", oneof: 0)
+  field(:thread_update, 17, type: Chat.ThreadUpdate, json_name: "threadUpdate", oneof: 0)
 end
 
 defmodule Chat.Ping do
@@ -141,4 +156,111 @@ defmodule Chat.FileDelivered do
   field(:content_type, 6, type: :string, json_name: "contentType")
   field(:size, 7, type: :int64)
   field(:inserted_at, 8, type: :int64, json_name: "insertedAt")
+end
+
+defmodule Chat.AddReaction do
+  @moduledoc false
+
+  use Protobuf,
+    full_name: "chat.AddReaction",
+    protoc_gen_elixir_version: "0.16.0",
+    syntax: :proto3
+
+  field(:room_id, 1, type: :string, json_name: "roomId")
+  field(:sequence_number, 2, type: :int64, json_name: "sequenceNumber")
+  field(:emoji, 3, type: :string)
+end
+
+defmodule Chat.RemoveReaction do
+  @moduledoc false
+
+  use Protobuf,
+    full_name: "chat.RemoveReaction",
+    protoc_gen_elixir_version: "0.16.0",
+    syntax: :proto3
+
+  field(:room_id, 1, type: :string, json_name: "roomId")
+  field(:sequence_number, 2, type: :int64, json_name: "sequenceNumber")
+end
+
+defmodule Chat.ReactionUpdate do
+  @moduledoc false
+
+  use Protobuf,
+    full_name: "chat.ReactionUpdate",
+    protoc_gen_elixir_version: "0.16.0",
+    syntax: :proto3
+
+  field(:room_id, 1, type: :string, json_name: "roomId")
+  field(:sequence_number, 2, type: :int64, json_name: "sequenceNumber")
+  field(:user_id, 3, type: :string, json_name: "userId")
+  field(:emoji, 4, type: :string)
+  field(:removed, 5, type: :bool)
+end
+
+defmodule Chat.ReadReceipt do
+  @moduledoc false
+
+  use Protobuf,
+    full_name: "chat.ReadReceipt",
+    protoc_gen_elixir_version: "0.16.0",
+    syntax: :proto3
+
+  field(:room_id, 1, type: :string, json_name: "roomId")
+  field(:sequence_number, 2, type: :int64, json_name: "sequenceNumber")
+end
+
+defmodule Chat.ReadUpdate do
+  @moduledoc false
+
+  use Protobuf,
+    full_name: "chat.ReadUpdate",
+    protoc_gen_elixir_version: "0.16.0",
+    syntax: :proto3
+
+  field(:room_id, 1, type: :string, json_name: "roomId")
+  field(:user_id, 2, type: :string, json_name: "userId")
+  field(:sequence_number, 3, type: :int64, json_name: "sequenceNumber")
+end
+
+defmodule Chat.SendReply do
+  @moduledoc false
+
+  use Protobuf,
+    full_name: "chat.SendReply",
+    protoc_gen_elixir_version: "0.16.0",
+    syntax: :proto3
+
+  field(:room_id, 1, type: :string, json_name: "roomId")
+  field(:parent_sequence_number, 2, type: :int64, json_name: "parentSequenceNumber")
+  field(:content, 3, type: :bytes)
+end
+
+defmodule Chat.ReplyDelivered do
+  @moduledoc false
+
+  use Protobuf,
+    full_name: "chat.ReplyDelivered",
+    protoc_gen_elixir_version: "0.16.0",
+    syntax: :proto3
+
+  field(:room_id, 1, type: :string, json_name: "roomId")
+  field(:parent_sequence_number, 2, type: :int64, json_name: "parentSequenceNumber")
+  field(:sequence_number, 3, type: :int64, json_name: "sequenceNumber")
+  field(:sender_id, 4, type: :string, json_name: "senderId")
+  field(:content, 5, type: :bytes)
+  field(:inserted_at, 6, type: :int64, json_name: "insertedAt")
+end
+
+defmodule Chat.ThreadUpdate do
+  @moduledoc false
+
+  use Protobuf,
+    full_name: "chat.ThreadUpdate",
+    protoc_gen_elixir_version: "0.16.0",
+    syntax: :proto3
+
+  field(:room_id, 1, type: :string, json_name: "roomId")
+  field(:parent_sequence_number, 2, type: :int64, json_name: "parentSequenceNumber")
+  field(:reply_count, 3, type: :int64, json_name: "replyCount")
 end

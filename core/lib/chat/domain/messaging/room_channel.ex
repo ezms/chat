@@ -10,10 +10,21 @@ defmodule Chat.Domain.Messaging.RoomChannel do
   alias Chat.Ack
   alias Chat.SendFile
   alias Chat.FileDelivered
+  alias Chat.AddReaction
+  alias Chat.RemoveReaction
+  alias Chat.ReactionUpdate
+  alias Chat.ReadReceipt
+  alias Chat.ReadUpdate
+  alias Chat.SendReply
+  alias Chat.ReplyDelivered
+  alias Chat.ThreadUpdate
   alias Chat.Domain.Presence
   alias Chat.Infra.Messaging.MessageStore
   alias Chat.Infra.Messaging.HistoryStore
   alias Chat.Infra.Messaging.AckStore
+  alias Chat.Infra.Messaging.ReactionStore
+  alias Chat.Infra.Messaging.ReadStore
+  alias Chat.Infra.Messaging.ThreadStore
   alias Chat.Infra.Queue.Publisher
 
   intercept(["presence_diff"])
@@ -91,7 +102,8 @@ defmodule Chat.Domain.Messaging.RoomChannel do
     {:noreply, socket}
   end
 
-  defp build_replay_envelope(%{"file_key" => file_key} = msg) when is_binary(file_key) and file_key != "" do
+  defp build_replay_envelope(%{"file_key" => file_key} = msg)
+       when is_binary(file_key) and file_key != "" do
     %{"filename" => filename, "content_type" => content_type, "size" => size} =
       Jason.decode!(msg["content"])
 
@@ -205,7 +217,14 @@ defmodule Chat.Domain.Messaging.RoomChannel do
         } ->
           sender_id = socket.assigns.user_id
 
-          case MessageStore.insert_file(room_id, sender_id, file_key, filename, content_type, size) do
+          case MessageStore.insert_file(
+                 room_id,
+                 sender_id,
+                 file_key,
+                 filename,
+                 content_type,
+                 size
+               ) do
             {:ok, sequence_number} ->
               delivered =
                 security().encode(
@@ -236,6 +255,136 @@ defmodule Chat.Domain.Messaging.RoomChannel do
         %Envelope{payload: {:ack, %Ack{room_id: room_id, sequence_number: sequence_number}}} ->
           :ok = AckStore.confirm(socket.assigns.user_id, room_id, sequence_number)
           {:noreply, socket}
+
+        %Envelope{
+          payload:
+            {:add_reaction,
+             %AddReaction{room_id: room_id, sequence_number: sequence_number, emoji: emoji}}
+        } ->
+          user_id = socket.assigns.user_id
+          :ok = ReactionStore.upsert(room_id, sequence_number, user_id, emoji)
+
+          update =
+            security().encode(
+              Envelope.encode(%Envelope{
+                payload:
+                  {:reaction_update,
+                   %ReactionUpdate{
+                     room_id: room_id,
+                     sequence_number: sequence_number,
+                     user_id: user_id,
+                     emoji: emoji,
+                     removed: false
+                   }}
+              }),
+              socket.assigns
+            )
+
+          broadcast!(socket, "message", update)
+          {:noreply, socket}
+
+        %Envelope{
+          payload:
+            {:remove_reaction,
+             %RemoveReaction{room_id: room_id, sequence_number: sequence_number}}
+        } ->
+          user_id = socket.assigns.user_id
+          :ok = ReactionStore.delete(room_id, sequence_number, user_id)
+
+          update =
+            security().encode(
+              Envelope.encode(%Envelope{
+                payload:
+                  {:reaction_update,
+                   %ReactionUpdate{
+                     room_id: room_id,
+                     sequence_number: sequence_number,
+                     user_id: user_id,
+                     emoji: "",
+                     removed: true
+                   }}
+              }),
+              socket.assigns
+            )
+
+          broadcast!(socket, "message", update)
+          {:noreply, socket}
+
+        %Envelope{
+          payload:
+            {:read_receipt, %ReadReceipt{room_id: room_id, sequence_number: sequence_number}}
+        } ->
+          user_id = socket.assigns.user_id
+          :ok = ReadStore.mark_read(user_id, room_id, sequence_number)
+
+          update =
+            security().encode(
+              Envelope.encode(%Envelope{
+                payload:
+                  {:read_update,
+                   %ReadUpdate{
+                     room_id: room_id,
+                     user_id: user_id,
+                     sequence_number: sequence_number
+                   }}
+              }),
+              socket.assigns
+            )
+
+          broadcast!(socket, "message", update)
+          {:noreply, socket}
+
+        %Envelope{
+          payload:
+            {:send_reply,
+             %SendReply{
+               room_id: room_id,
+               parent_sequence_number: parent_seq,
+               content: content
+             }}
+        } ->
+          sender_id = socket.assigns.user_id
+
+          with {:ok, sequence_number} <-
+                 ThreadStore.insert_reply(room_id, parent_seq, sender_id, content),
+               {:ok, reply_count} <- ThreadStore.count_replies(room_id, parent_seq) do
+            reply =
+              security().encode(
+                Envelope.encode(%Envelope{
+                  payload:
+                    {:reply_delivered,
+                     %ReplyDelivered{
+                       room_id: room_id,
+                       parent_sequence_number: parent_seq,
+                       sequence_number: sequence_number,
+                       sender_id: sender_id,
+                       content: content,
+                       inserted_at: System.os_time(:millisecond)
+                     }}
+                }),
+                socket.assigns
+              )
+
+            thread =
+              security().encode(
+                Envelope.encode(%Envelope{
+                  payload:
+                    {:thread_update,
+                     %ThreadUpdate{
+                       room_id: room_id,
+                       parent_sequence_number: parent_seq,
+                       reply_count: reply_count
+                     }}
+                }),
+                socket.assigns
+              )
+
+            broadcast!(socket, "message", reply)
+            broadcast!(socket, "message", thread)
+            {:noreply, socket}
+          else
+            {:error, _} -> {:reply, {:error, %{}}, socket}
+          end
 
         %Envelope{payload: {:typing_event, %TypingEvent{room_id: room_id, is_typing: is_typing}}} ->
           event =

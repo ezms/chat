@@ -10,6 +10,7 @@ defmodule Chat.Domain.User.SocketTest do
 
   setup do
     Application.put_env(:core, :secret_key_base, @secret)
+    Application.delete_env(:core, :auth_module)
     :ok
   end
 

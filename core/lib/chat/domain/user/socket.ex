@@ -27,7 +27,7 @@ defmodule Chat.Domain.User.Socket do
   end
 
   def connect(%{"token" => token}, socket, _connect_info) do
-    auth = Application.get_env(:core, :auth_module)
+    auth = Application.get_env(:core, :auth_module, Chat.Infra.Auth.Default)
 
     case auth.verify(token) do
       {:ok, %{user_id: user_id, room_ids: room_ids}} ->

@@ -18,6 +18,7 @@ A standalone, generic and integrable real-time messaging service. Designed to be
 - [Docker Compose Profiles](#docker-compose-profiles)
 - [Integration Contracts](#integration-contracts)
   - [Authentication](#authentication)
+  - [Channel Security](#channel-security)
   - [Object Storage](#object-storage)
   - [Message Broker](#message-broker)
   - [RabbitMQ Events](#rabbitmq-events)
@@ -153,8 +154,8 @@ The `widget/` directory contains the default implementation. Integrators are fre
 | Message history | ScyllaDB | Wide-column, native time-series. Partition key: `channel_id`, clustering key: `sequence_number`. High write throughput, paginated cursor reads. Modern C++ Cassandra. |
 | Presence & cache | Redis | Natural TTL for ephemeral events (typing, last_seen). Pub/sub for cross-node presence notifications. |
 | Fan-out | RabbitMQ | Topic exchange for generic routing by workspace/channel. Integrators subscribe to their own queues. |
-| Search | Meilisearch | Open source search engine, self-hostable, written in Rust. Async indexing via RabbitMQ consumer. ScyllaDB is the primary store — Meilisearch is the index only. *(M7+)* |
-| Object storage | MinIO | S3-compatible, self-hostable. Stores files and media. Access via presigned URLs. Replaceable by S3, R2, Oracle Storage via `Chat.Storage` behaviour. *(M5+)* |
+| Search | Meilisearch | Open source search engine, self-hostable, written in Rust. Async indexing via RabbitMQ consumer. ScyllaDB is the primary store — Meilisearch is the index only. *(M9+)* |
+| Object storage | MinIO | S3-compatible, self-hostable. Stores files and media. Access via presigned URLs. Replaceable by S3, R2, Oracle Storage via `Chat.Contracts.Storage` behaviour. |
 | Backend (demo) | Bun + Elysia | REST API serving the standalone frontend. Exists for demonstration and self-hosting — not part of the service core. |
 | Frontend (demo) | Svelte | Standalone UI for demonstration and portfolio. Demonstrates the widget in use. |
 | Widget | Svelte → Web Component | Default `<chat-widget>` implementation. Represents Model C. Integrators may build their own widget on top of the core JS client. |
@@ -175,9 +176,14 @@ chat/
 │   │   │   ├── messaging/      # send/receive, sequence numbers, history
 │   │   │   └── presence/       # Phoenix.Presence CRDT
 │   │   └── infra/              # external adapters
+│   │       ├── auth/           # Auth.Default — JWT via Joken
+│   │       ├── channel_security/ # Passthrough + AESGCM
 │   │       ├── database/       # ScyllaDB (Xandra)
-│   │       ├── cache/          # Redis
-│   │       └── queue/          # RabbitMQ
+│   │       ├── grpc/           # gRPC Admin handlers
+│   │       ├── messaging/      # MessageStore, HistoryStore, AckStore
+│   │       ├── queue/          # RabbitMQ connection + publisher
+│   │       ├── redis/          # Sequence counter
+│   │       └── storage/        # Minio — Chat.Contracts.Storage default
 │   ├── config/
 │   └── mix.exs
 │
@@ -267,9 +273,13 @@ All configuration is via environment variables. Copy `.env.example` to `.env` be
 | `SCYLLADB_URL` | No | `scylladb:9042` | ScyllaDB connection. Omit `local-db` profile if set externally. |
 | `REDIS_URL` | No | `redis://redis:6379` | Redis connection. Omit `local-cache` profile if set externally. |
 | `RABBITMQ_URL` | No | `amqp://chat:chat@rabbitmq:5672` | RabbitMQ connection. Omit `local-queue` profile if set externally. |
+| `MINIO_HOST` | No | `minio` | MinIO/S3 host. |
+| `MINIO_PORT` | No | `9000` | MinIO/S3 port. |
+| `MINIO_ACCESS_KEY` | No | `chatadmin` | MinIO/S3 access key. |
+| `MINIO_SECRET_KEY` | No | `changeme` | MinIO/S3 secret key. Change in production. |
+| `MINIO_BUCKET` | No | `chat` | Bucket name for file storage. |
 | `MEILISEARCH_URL` | No | _(empty)_ | Enables search feature when set. Requires `search` profile or external instance. |
 | `MEILISEARCH_KEY` | No | _(empty)_ | Meilisearch master key. |
-| `STORAGE_URL` | No | _(empty)_ | Enables media feature when set. Requires `storage` profile or external instance. |
 
 ### Demo services
 
@@ -300,8 +310,8 @@ Profiles are named by feature, not by technology.
 | `local-db` | ScyllaDB | No external ScyllaDB configured |
 | `local-cache` | Redis | No external Redis configured |
 | `local-queue` | RabbitMQ | No external broker configured |
-| `search` | Meilisearch | Search feature enabled (M7+) |
-| `storage` | MinIO | Media feature enabled (M5+) |
+| `search` | Meilisearch | Search feature enabled *(M9+)* |
+| `storage` | MinIO | Media feature enabled |
 | `demo` | backend + frontend | Standalone deployment / portfolio |
 
 `core` always starts regardless of profiles.
@@ -336,25 +346,73 @@ config :core, auth: MyApp.CustomAuth
 
 User profiles, display names, and avatars are the integrator's responsibility — the service only receives `user_id` and `room_ids` from `verify/1`.
 
-### Object Storage
+### Channel Security
 
-The service delegates file storage to the integrator via the `Chat.Storage` behaviour.
+By default all payload encryption is handled at the transport layer (TLS). For deployments that need end-to-end encryption at the application layer, the service exposes a pluggable `Chat.Contracts.ChannelSecurity` behaviour.
 
 ```elixir
-defmodule Chat.Storage do
-  @callback upload(path :: String.t(), content :: binary()) ::
-    {:ok, url :: String.t()} | {:error, reason :: atom()}
-  @callback presigned_url(path :: String.t()) ::
-    {:ok, url :: String.t()} | {:error, reason :: atom()}
-  @callback delete(path :: String.t()) ::
-    :ok | {:error, reason :: atom()}
+defmodule Chat.Contracts.ChannelSecurity do
+  @callback encode(payload :: binary(), assigns :: map()) :: binary()
+  @callback decode(payload :: binary(), assigns :: map()) :: {:ok, binary()} | {:error, term()}
+  @callback derive_session_key(client_pub_key :: binary()) ::
+              {server_pub_key :: binary(), session_key :: binary()}
 end
 ```
 
-The default implementation uses MinIO. To use S3, R2, Oracle Storage or any other provider:
+**Built-in implementations:**
+
+| Module | Description |
+|---|---|
+| `Chat.Infra.ChannelSecurity.Passthrough` | Default — no-op, relies on TLS |
+| `Chat.Infra.ChannelSecurity.AESGCM` | AES-256-GCM payload encryption with ECDH (X25519) key exchange |
+
+**ECDH handshake (AESGCM):**
+
+1. Client generates an X25519 key pair, sends `client_pub_key` (Base64) alongside `token` in the WebSocket connect params.
+2. Server runs ECDH, derives a 32-byte session key (SHA-256 of the shared secret), and returns `server_pub_key` (Base64) in the `join` reply.
+3. All subsequent `Envelope` frames are encrypted — nonce (12 bytes) + auth tag (16 bytes) prepended to the ciphertext.
+
+To enable:
 
 ```elixir
-config :chat_core, storage: MyApp.S3Storage
+# config/config.exs
+config :core, :channel_security, Chat.Infra.ChannelSecurity.AESGCM
+```
+
+To use a custom implementation:
+
+```elixir
+config :core, :channel_security, MyApp.CustomChannelSecurity
+```
+
+### Object Storage
+
+The service delegates presigned URL generation to the `Chat.Contracts.Storage` behaviour.
+
+```elixir
+defmodule Chat.Contracts.Storage do
+  @callback presign_upload(file_key :: String.t(), opts :: keyword()) ::
+              {:ok, %{upload_url: String.t(), file_key: String.t()}} | {:error, term()}
+  @callback presign_download(file_key :: String.t(), opts :: keyword()) ::
+              {:ok, String.t()} | {:error, term()}
+end
+```
+
+The default implementation uses MinIO (S3-compatible). Files are never proxied through the service — clients upload/download directly from object storage via presigned URLs.
+
+**HTTP endpoints (Bearer token required):**
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/upload/presign` | Returns `{ upload_url, file_key }` for a direct PUT to MinIO |
+| `GET` | `/files/presign?file_key=<key>` | Returns a presigned download URL |
+
+After uploading, the client sends a `SendFile` WebSocket message to persist the file reference and broadcast `FileDelivered` to all room members.
+
+To use S3, R2, Oracle Storage or any other provider, implement the behaviour and configure it:
+
+```elixir
+config :core, :storage_module, MyApp.S3Storage
 ```
 
 ### Message Broker
@@ -407,6 +465,16 @@ message Envelope {
     Ack              ack              = 5;
     TypingEvent      typing_event     = 6;
     PresenceState    presence_state   = 7;
+    SendFile         send_file        = 8;
+    FileDelivered    file_delivered   = 9;
+    AddReaction      add_reaction     = 10;
+    RemoveReaction   remove_reaction  = 11;
+    ReactionUpdate   reaction_update  = 12;
+    ReadReceipt      read_receipt     = 13;
+    ReadUpdate       read_update      = 14;
+    SendReply        send_reply       = 15;
+    ReplyDelivered   reply_delivered  = 16;
+    ThreadUpdate     thread_update    = 17;
   }
 }
 ```
@@ -416,18 +484,28 @@ message Envelope {
 | Message | Description |
 |---|---|
 | `Ping` | Heartbeat — server replies with `Pong` |
-| `SendMessage` | Send a message to a room (`room_id`, `content`) |
+| `SendMessage` | Send a text message to a room (`room_id`, `content`) |
+| `SendFile` | Send a file reference to a room (`room_id`, `file_key`, `filename`, `content_type`, `size`) |
 | `Ack` | Confirm delivery of a message (`room_id`, `sequence_number`) |
 | `TypingEvent` | Typing indicator (`room_id`, `is_typing`) — server injects `user_id` before broadcasting |
+| `AddReaction` | Add an emoji reaction to a message (`room_id`, `sequence_number`, `emoji`) |
+| `RemoveReaction` | Remove an emoji reaction from a message (`room_id`, `sequence_number`) |
+| `ReadReceipt` | Mark messages as read up to `sequence_number` (`room_id`, `sequence_number`) |
+| `SendReply` | Send a reply in a message thread (`room_id`, `parent_sequence_number`, `content`) |
 
 **Server → Client:**
 
 | Message | Description |
 |---|---|
 | `Pong` | Heartbeat reply |
-| `MessageDelivered` | Message confirmed and stored (`room_id`, `sequence_number`, `sender_id`, `content`, `inserted_at`) |
+| `MessageDelivered` | Text message confirmed and stored (`room_id`, `sequence_number`, `sender_id`, `content`, `inserted_at`) |
+| `FileDelivered` | File message confirmed and stored (`room_id`, `sequence_number`, `sender_id`, `file_key`, `filename`, `content_type`, `size`, `inserted_at`) |
 | `PresenceState` | Current online users in the room (`user_ids`) — pushed on join and on every presence change |
 | `TypingEvent` | Typing indicator broadcast with `user_id` injected by the server |
+| `ReactionUpdate` | Reaction change broadcast (`room_id`, `sequence_number`, `user_id`, `emoji`, `removed`) |
+| `ReadUpdate` | Read receipt broadcast (`room_id`, `user_id`, `sequence_number`) |
+| `ReplyDelivered` | Reply confirmed and stored (`room_id`, `parent_sequence_number`, `sequence_number`, `sender_id`, `content`, `inserted_at`) |
+| `ThreadUpdate` | Thread reply count updated (`room_id`, `parent_sequence_number`, `reply_count`) |
 
 **Delivery guarantee:** `MessageDelivered` carries a monotonically increasing `sequence_number` per room. On reconnect, the client joins with `last_sequence` and the server replays all missed messages before resuming the live stream. The last acknowledged `sequence_number` is also persisted server-side (via `Ack`) so replay works even without client state.
 
@@ -471,11 +549,14 @@ protoc --es_out=./widget/src/proto proto/messages.proto
 
 ```bash
 cd core
-mix test                  # full suite
-mix test --cover          # with coverage report
+mix test                  # unit tests only (no infra required)
+mix test.integration      # starts Docker infra, runs all tests, tears down
+mix coveralls             # coverage report (minimum threshold: 80%)
 mix credo                 # static analysis
 mix dialyzer              # type checking
 ```
+
+`mix test` excludes `:integration` and `:no_broker` tags by default — no infrastructure needed. `mix test.integration` spins up the test containers defined in `docker-compose.test.yml`, runs the full suite including integration tests, and tears down after.
 
 | Tool | Purpose |
 |---|---|
@@ -487,12 +568,6 @@ mix dialyzer              # type checking
 | Credo | Static analysis, style, code smells |
 | Dialyxir | Type checking via Dialyzer |
 | ExCoveralls | Coverage reports — minimum threshold: 80% |
-
-Integration tests require the infrastructure services. Start them before running:
-
-```bash
-docker compose --profile local-db --profile local-cache --profile local-queue up -d
-```
 
 ### Frontend & Backend JS
 
@@ -569,8 +644,8 @@ The `proto/messages.proto` dependency is explicit: changes to the protocol trigg
 | **M3** | Delivery Guarantees — explicit ack, offline queue, replay on reconnect, at-least-once | ✅ |
 | **M4** | Presence & Rooms — Phoenix Presence, typing indicators, room access via JWT `room_ids` | ✅ |
 | **M5** | Event Fan-out — RabbitMQ topic exchange, domain events (`message.sent`, `presence.changed`); gRPC Admin API (`GetHistory`, `SendSystemMsg`) | ✅ |
-| **M6** | Channel Security — `ChannelSecurity` behaviour, AES-256-GCM payload encryption, ECDH key exchange on connect | ⬜ |
-| **M7** | Media & Files — MinIO/S3 via `Chat.Storage`, file message type, presigned URLs | ⬜ |
-| **M8** | Extended Features — threads, reactions, read receipts | ⬜ |
+| **M6** | Channel Security — `ChannelSecurity` behaviour, AES-256-GCM payload encryption, ECDH key exchange on connect | ✅ |
+| **M7** | Media & Files — MinIO/S3 via `Chat.Contracts.Storage`, presigned upload/download, `SendFile`/`FileDelivered` messages | ✅ |
+| **M8** | Extended Features — threads, reactions, read receipts | ✅ |
 | **M9** | Search — Meilisearch async indexing, message search API | ⬜ |
 | **M10** | Push Notifications — FCM, APNs, Web Push for fully offline users | ⬜ |
