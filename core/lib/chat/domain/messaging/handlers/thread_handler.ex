@@ -21,6 +21,7 @@ defmodule Chat.Domain.Messaging.Handlers.ThreadHandler do
         sequence_number: sequence_number,
         inserted_at: System.os_time(:millisecond)
       })
+
       reply =
         Envelope.encode(%Envelope{
           payload:
