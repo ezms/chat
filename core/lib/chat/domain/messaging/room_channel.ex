@@ -184,7 +184,9 @@ defmodule Chat.Domain.Messaging.RoomChannel do
   end
 
   defp dispatch(
-         %Envelope{payload: {:typing_event, %TypingEvent{room_id: room_id, is_typing: is_typing}}},
+         %Envelope{
+           payload: {:typing_event, %TypingEvent{room_id: room_id, is_typing: is_typing}}
+         },
          socket
        ) do
     {:broadcast,

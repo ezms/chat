@@ -12,5 +12,6 @@ defmodule Chat.Router do
 
     post("/upload/presign", Http.UploadController, :presign_upload)
     get("/files/presign", Http.UploadController, :presign_download)
+    get("/search", Http.SearchController, :search)
   end
 end

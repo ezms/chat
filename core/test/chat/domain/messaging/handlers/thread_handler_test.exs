@@ -45,7 +45,12 @@ defmodule Chat.Domain.Messaging.Handlers.ThreadHandlerTest do
     assert {:broadcast_many, [_reply, thread_enc1]} = ThreadHandler.handle(msg, assigns)
     assert %Envelope{payload: {:thread_update, t1}} = Envelope.decode(thread_enc1)
 
-    msg2 = %Chat.SendReply{room_id: room_id, parent_sequence_number: parent_seq, content: "second"}
+    msg2 = %Chat.SendReply{
+      room_id: room_id,
+      parent_sequence_number: parent_seq,
+      content: "second"
+    }
+
     assert {:broadcast_many, [_reply, thread_enc2]} = ThreadHandler.handle(msg2, assigns)
     assert %Envelope{payload: {:thread_update, t2}} = Envelope.decode(thread_enc2)
 

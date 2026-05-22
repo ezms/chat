@@ -647,5 +647,5 @@ The `proto/messages.proto` dependency is explicit: changes to the protocol trigg
 | **M6** | Channel Security — `ChannelSecurity` behaviour, AES-256-GCM payload encryption, ECDH key exchange on connect | ✅ |
 | **M7** | Media & Files — MinIO/S3 via `Chat.Contracts.Storage`, presigned upload/download, `SendFile`/`FileDelivered` messages | ✅ |
 | **M8** | Extended Features — threads, reactions, read receipts | ✅ |
-| **M9** | Search — Meilisearch async indexing, message search API | ⬜ |
+| **M9** | Search — Meilisearch async indexing, message search API | ✅ |
 | **M10** | Push Notifications — FCM, APNs, Web Push for fully offline users | ⬜ |

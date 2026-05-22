@@ -94,30 +94,53 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
     assert_push("message", _)
   end
 
-  test "replays file message on reconnect", %{socket: socket} do
+  test "replays file message on reconnect" do
+    room_id = "room_file_#{System.unique_integer([:positive])}"
+    sender_id = "user_file_sender_#{System.unique_integer([:positive])}"
+
+    {:ok, sender_conn} =
+      connect(Chat.Domain.User.Socket, %{"token" => make_token(sender_id, [room_id])})
+
+    {:ok, _, sender_socket} = subscribe_and_join(sender_conn, "room:#{room_id}")
+
+    file_key = "#{room_id}/replay.jpg"
+
     payload =
       Chat.Envelope.encode(%Chat.Envelope{
         payload:
           {:send_file,
            %Chat.SendFile{
-             room_id: "lobby",
-             file_key: "lobby/replay.jpg",
+             room_id: room_id,
+             file_key: file_key,
              filename: "replay.jpg",
              content_type: "image/jpeg",
              size: 512
            }}
       })
 
-    push(socket, "message", payload)
+    push(sender_socket, "message", payload)
     assert_broadcast("message", _delivered)
 
-    {:ok, socket2} =
-      connect(Chat.Domain.User.Socket, %{"token" => make_token("user_replay_file", ["lobby"])})
+    # Drain all stale messages from prior tests so the receive loop stays small
+    drain = fn drain ->
+      receive do
+        _ -> drain.(drain)
+      after
+        0 -> :ok
+      end
+    end
 
-    {:ok, _, _} = subscribe_and_join(socket2, "room:lobby", %{"last_sequence" => 0})
+    drain.(drain)
+
+    {:ok, socket2} =
+      connect(Chat.Domain.User.Socket, %{
+        "token" => make_token("user_replay_file_#{System.unique_integer([:positive])}", [room_id])
+      })
+
+    {:ok, _, _} = subscribe_and_join(socket2, "room:#{room_id}", %{"last_sequence" => 0})
 
     replayed =
-      Enum.find_value(1..5, fn _ ->
+      Enum.find_value(1..20, fn _ ->
         receive do
           %Phoenix.Socket.Message{event: "message", payload: p} ->
             if match?(%Chat.Envelope{payload: {:file_delivered, _}}, Chat.Envelope.decode(p)),
@@ -126,7 +149,7 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
           _ ->
             nil
         after
-          500 -> nil
+          200 -> nil
         end
       end)
 
@@ -177,6 +200,7 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
 
     push(socket, "message", payload)
     assert_broadcast("message", broadcast)
+
     assert %Chat.Envelope{payload: {:reaction_update, %Chat.ReactionUpdate{removed: false}}} =
              Chat.Envelope.decode(broadcast)
   end
@@ -191,6 +215,7 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
 
     push(socket, "message", payload)
     assert_broadcast("message", broadcast)
+
     assert %Chat.Envelope{payload: {:reaction_update, %Chat.ReactionUpdate{removed: true}}} =
              Chat.Envelope.decode(broadcast)
   end
@@ -203,6 +228,7 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
 
     push(socket, "message", payload)
     assert_broadcast("message", broadcast)
+
     assert %Chat.Envelope{payload: {:read_update, %Chat.ReadUpdate{}}} =
              Chat.Envelope.decode(broadcast)
   end
@@ -248,6 +274,7 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
 
     push(socket, "message", payload)
     assert_broadcast("message", broadcast)
+
     assert %Chat.Envelope{payload: {:typing_event, %Chat.TypingEvent{is_typing: true}}} =
              Chat.Envelope.decode(broadcast)
   end
