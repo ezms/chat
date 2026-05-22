@@ -75,17 +75,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Normalize version
+        id: ver
+        run: echo "tag=v${VERSION#v}" >> $GITHUB_OUTPUT
+        env:
+          VERSION: ${{ inputs.version }}
+
       - name: Create and push tag
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag v${{ inputs.version }}
-          git push origin v${{ inputs.version }}
+          git tag ${{ steps.ver.outputs.tag }}
+          git push origin ${{ steps.ver.outputs.tag }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ inputs.version }}
+          tag_name: ${{ steps.ver.outputs.tag }}
           generate_release_notes: true
 
       - name: Log in to GHCR
@@ -101,5 +107,5 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/chat-core:${{ inputs.version }}
+            ghcr.io/${{ github.repository_owner }}/chat-core:${{ steps.ver.outputs.tag }}
             ghcr.io/${{ github.repository_owner }}/chat-core:latest
