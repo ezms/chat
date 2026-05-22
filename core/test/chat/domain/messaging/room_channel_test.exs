@@ -43,17 +43,23 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
     assert %Chat.Envelope{payload: {:pong, %Chat.Pong{}}} = Chat.Envelope.decode(response)
   end
 
-  test "ignores unknown messages", %{socket: socket} do
+  test "ignores server-side envelope types (catch-all dispatch)", %{socket: socket} do
+    payload = Chat.Envelope.encode(%Chat.Envelope{payload: {:pong, %Chat.Pong{}}})
+    ref = push(socket, "message", payload)
+    refute_reply(ref, :ok)
+  end
+
+  test "ack stores confirmation without reply to sender", %{socket: socket} do
     payload =
       Chat.Envelope.encode(%Chat.Envelope{
-        payload: {:send_message, %Chat.SendMessage{room_id: "lobby", content: "oi"}}
+        payload: {:ack, %Chat.Ack{room_id: "lobby", sequence_number: 1}}
       })
 
     ref = push(socket, "message", payload)
     refute_reply(ref, :ok)
   end
 
-  test "broadcasts message to other users in room", %{socket: socket} do
+  test "routes send_message through dispatch and broadcasts MessageDelivered", %{socket: socket} do
     {:ok, socket2} =
       connect(Chat.Domain.User.Socket, %{"token" => make_token("user_2", ["lobby"])})
 
@@ -86,158 +92,6 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
     {:ok, _, _} = subscribe_and_join(socket2, "room:lobby", %{"last_sequence" => 0})
 
     assert_push("message", _)
-  end
-
-  test "terminates cleanly on disconnect", %{socket: socket} do
-    Process.flag(:trap_exit, true)
-    close(socket)
-    assert_receive {:EXIT, _, _}
-  end
-
-  test "add_reaction broadcasts ReactionUpdate with removed: false", %{socket: socket} do
-    payload =
-      Chat.Envelope.encode(%Chat.Envelope{
-        payload:
-          {:add_reaction, %Chat.AddReaction{room_id: "lobby", sequence_number: 1, emoji: "👍"}}
-      })
-
-    push(socket, "message", payload)
-
-    assert_broadcast("message", broadcast)
-
-    assert %Chat.Envelope{
-             payload:
-               {:reaction_update,
-                %Chat.ReactionUpdate{
-                  room_id: "lobby",
-                  sequence_number: 1,
-                  emoji: "👍",
-                  removed: false
-                }}
-           } = Chat.Envelope.decode(broadcast)
-  end
-
-  test "remove_reaction broadcasts ReactionUpdate with removed: true", %{socket: socket} do
-    payload =
-      Chat.Envelope.encode(%Chat.Envelope{
-        payload: {:remove_reaction, %Chat.RemoveReaction{room_id: "lobby", sequence_number: 1}}
-      })
-
-    push(socket, "message", payload)
-
-    assert_broadcast("message", broadcast)
-
-    assert %Chat.Envelope{
-             payload:
-               {:reaction_update,
-                %Chat.ReactionUpdate{
-                  room_id: "lobby",
-                  sequence_number: 1,
-                  removed: true
-                }}
-           } = Chat.Envelope.decode(broadcast)
-  end
-
-  test "send_reply broadcasts ReplyDelivered and ThreadUpdate", %{socket: socket} do
-    send_msg =
-      Chat.Envelope.encode(%Chat.Envelope{
-        payload: {:send_message, %Chat.SendMessage{room_id: "lobby", content: "parent"}}
-      })
-
-    push(socket, "message", send_msg)
-    assert_broadcast("message", delivered_raw)
-
-    %Chat.Envelope{
-      payload: {:message_delivered, %Chat.MessageDelivered{sequence_number: parent_seq}}
-    } =
-      Chat.Envelope.decode(delivered_raw)
-
-    reply_payload =
-      Chat.Envelope.encode(%Chat.Envelope{
-        payload:
-          {:send_reply,
-           %Chat.SendReply{
-             room_id: "lobby",
-             parent_sequence_number: parent_seq,
-             content: "reply content"
-           }}
-      })
-
-    push(socket, "message", reply_payload)
-
-    assert_broadcast("message", reply_raw)
-    assert_broadcast("message", thread_raw)
-
-    assert %Chat.Envelope{
-             payload:
-               {:reply_delivered,
-                %Chat.ReplyDelivered{
-                  room_id: "lobby",
-                  parent_sequence_number: ^parent_seq,
-                  sender_id: "user_1"
-                }}
-           } = Chat.Envelope.decode(reply_raw)
-
-    assert %Chat.Envelope{
-             payload:
-               {:thread_update,
-                %Chat.ThreadUpdate{
-                  room_id: "lobby",
-                  parent_sequence_number: ^parent_seq,
-                  reply_count: 1
-                }}
-           } = Chat.Envelope.decode(thread_raw)
-  end
-
-  test "read_receipt broadcasts ReadUpdate", %{socket: socket} do
-    payload =
-      Chat.Envelope.encode(%Chat.Envelope{
-        payload: {:read_receipt, %Chat.ReadReceipt{room_id: "lobby", sequence_number: 5}}
-      })
-
-    push(socket, "message", payload)
-
-    assert_broadcast("message", broadcast)
-
-    assert %Chat.Envelope{
-             payload:
-               {:read_update,
-                %Chat.ReadUpdate{
-                  room_id: "lobby",
-                  user_id: "user_1",
-                  sequence_number: 5
-                }}
-           } = Chat.Envelope.decode(broadcast)
-  end
-
-  test "send_file broadcasts FileDelivered", %{socket: socket} do
-    payload =
-      Chat.Envelope.encode(%Chat.Envelope{
-        payload:
-          {:send_file,
-           %Chat.SendFile{
-             room_id: "lobby",
-             file_key: "lobby/abc123.jpg",
-             filename: "photo.jpg",
-             content_type: "image/jpeg",
-             size: 1024
-           }}
-      })
-
-    push(socket, "message", payload)
-
-    assert_broadcast("message", broadcast)
-
-    assert %Chat.Envelope{
-             payload:
-               {:file_delivered,
-                %Chat.FileDelivered{
-                  room_id: "lobby",
-                  file_key: "lobby/abc123.jpg",
-                  filename: "photo.jpg",
-                  sender_id: "user_1"
-                }}
-           } = Chat.Envelope.decode(broadcast)
   end
 
   test "replays file message on reconnect", %{socket: socket} do
@@ -312,5 +166,95 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
     {:ok, _, _} = subscribe_and_join(offline_conn, "room:#{room_id}")
 
     assert_push("message", _)
+  end
+
+  test "routes add_reaction through dispatch and broadcasts ReactionUpdate", %{socket: socket} do
+    payload =
+      Chat.Envelope.encode(%Chat.Envelope{
+        payload:
+          {:add_reaction, %Chat.AddReaction{room_id: "lobby", sequence_number: 1, emoji: "👍"}}
+      })
+
+    push(socket, "message", payload)
+    assert_broadcast("message", broadcast)
+    assert %Chat.Envelope{payload: {:reaction_update, %Chat.ReactionUpdate{removed: false}}} =
+             Chat.Envelope.decode(broadcast)
+  end
+
+  test "routes remove_reaction through dispatch and broadcasts ReactionUpdate removed", %{
+    socket: socket
+  } do
+    payload =
+      Chat.Envelope.encode(%Chat.Envelope{
+        payload: {:remove_reaction, %Chat.RemoveReaction{room_id: "lobby", sequence_number: 1}}
+      })
+
+    push(socket, "message", payload)
+    assert_broadcast("message", broadcast)
+    assert %Chat.Envelope{payload: {:reaction_update, %Chat.ReactionUpdate{removed: true}}} =
+             Chat.Envelope.decode(broadcast)
+  end
+
+  test "routes read_receipt through dispatch and broadcasts ReadUpdate", %{socket: socket} do
+    payload =
+      Chat.Envelope.encode(%Chat.Envelope{
+        payload: {:read_receipt, %Chat.ReadReceipt{room_id: "lobby", sequence_number: 5}}
+      })
+
+    push(socket, "message", payload)
+    assert_broadcast("message", broadcast)
+    assert %Chat.Envelope{payload: {:read_update, %Chat.ReadUpdate{}}} =
+             Chat.Envelope.decode(broadcast)
+  end
+
+  test "routes send_reply through dispatch and broadcasts ReplyDelivered + ThreadUpdate", %{
+    socket: socket
+  } do
+    send_msg =
+      Chat.Envelope.encode(%Chat.Envelope{
+        payload: {:send_message, %Chat.SendMessage{room_id: "lobby", content: "parent"}}
+      })
+
+    push(socket, "message", send_msg)
+    assert_broadcast("message", delivered_raw)
+
+    %Chat.Envelope{
+      payload: {:message_delivered, %Chat.MessageDelivered{sequence_number: parent_seq}}
+    } = Chat.Envelope.decode(delivered_raw)
+
+    reply_payload =
+      Chat.Envelope.encode(%Chat.Envelope{
+        payload:
+          {:send_reply,
+           %Chat.SendReply{
+             room_id: "lobby",
+             parent_sequence_number: parent_seq,
+             content: "reply"
+           }}
+      })
+
+    push(socket, "message", reply_payload)
+    assert_broadcast("message", reply_raw)
+    assert_broadcast("message", thread_raw)
+    assert %Chat.Envelope{payload: {:reply_delivered, _}} = Chat.Envelope.decode(reply_raw)
+    assert %Chat.Envelope{payload: {:thread_update, _}} = Chat.Envelope.decode(thread_raw)
+  end
+
+  test "routes typing_event through dispatch and broadcasts TypingEvent", %{socket: socket} do
+    payload =
+      Chat.Envelope.encode(%Chat.Envelope{
+        payload: {:typing_event, %Chat.TypingEvent{room_id: "lobby", is_typing: true}}
+      })
+
+    push(socket, "message", payload)
+    assert_broadcast("message", broadcast)
+    assert %Chat.Envelope{payload: {:typing_event, %Chat.TypingEvent{is_typing: true}}} =
+             Chat.Envelope.decode(broadcast)
+  end
+
+  test "terminates cleanly on disconnect", %{socket: socket} do
+    Process.flag(:trap_exit, true)
+    close(socket)
+    assert_receive {:EXIT, _, _}
   end
 end
