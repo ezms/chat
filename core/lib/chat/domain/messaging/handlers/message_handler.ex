@@ -7,11 +7,20 @@ defmodule Chat.Domain.Messaging.Handlers.MessageHandler do
   def handle(%SendMessage{room_id: room_id, content: content}, %{user_id: sender_id}) do
     case MessageStore.insert(room_id, sender_id, content) do
       {:ok, sequence_number} ->
+        now = System.os_time(:millisecond)
+
         Publisher.publish("message.sent", %{
           room_id: room_id,
           sender_id: sender_id,
           sequence_number: sequence_number,
-          inserted_at: System.os_time(:millisecond)
+          inserted_at: now
+        })
+
+        Publisher.publish("push.notify", %{
+          room_id: room_id,
+          sender_id: sender_id,
+          sequence_number: sequence_number,
+          inserted_at: now
         })
 
         {:broadcast,
@@ -44,6 +53,13 @@ defmodule Chat.Domain.Messaging.Handlers.MessageHandler do
       ) do
     case MessageStore.insert_file(room_id, sender_id, file_key, filename, content_type, size) do
       {:ok, sequence_number} ->
+        Publisher.publish("push.notify", %{
+          room_id: room_id,
+          sender_id: sender_id,
+          sequence_number: sequence_number,
+          inserted_at: System.os_time(:millisecond)
+        })
+
         {:broadcast,
          Envelope.encode(%Envelope{
            payload:

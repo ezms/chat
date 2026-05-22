@@ -435,6 +435,7 @@ The service publishes domain events to a RabbitMQ topic exchange. Any integratin
 |---|---|---|
 | `chat.events` | `message.sent` | `room_id, sender_id, sequence_number, content, inserted_at` |
 | `chat.events` | `presence.changed` | `room_id, user_id, status (online/offline)` |
+| `chat.events` | `push.notify` | `room_id, sender_id, sequence_number, inserted_at` — fired on every new message, reply, or file; the integrator decides who to notify and via which channel (FCM, APNs, Web Push) |
 
 Routing keys follow the pattern `<object>.<verb>`, allowing consumers to bind selectively (e.g. `message.*` for all message events, `#` for everything).
 
@@ -648,4 +649,4 @@ The `proto/messages.proto` dependency is explicit: changes to the protocol trigg
 | **M7** | Media & Files — MinIO/S3 via `Chat.Contracts.Storage`, presigned upload/download, `SendFile`/`FileDelivered` messages | ✅ |
 | **M8** | Extended Features — threads, reactions, read receipts | ✅ |
 | **M9** | Search — Meilisearch async indexing, message search API | ✅ |
-| **M10** | Push Notifications — FCM, APNs, Web Push for fully offline users | ⬜ |
+| **M10** | Push Notifications — `push.notify` RabbitMQ event; integrator owns FCM/APNs/Web Push delivery | ✅ |
