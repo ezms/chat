@@ -58,10 +58,9 @@ jobs:
       - name: Test
         working-directory: core
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SCYLLADB_HOST: localhost
           REDIS_HOST: localhost
-        run: mix coveralls.github --exclude no_broker
+        run: mix test --exclude no_broker
 
   publish:
     needs: test
