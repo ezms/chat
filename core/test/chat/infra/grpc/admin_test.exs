@@ -74,11 +74,11 @@ defmodule Chat.Infra.Grpc.AdminTest do
         )
 
       assert %Chat.Admin.SystemAck{} = result
-      assert_push("message", pushed)
+      assert_push("message", {:binary, pushed_payload})
 
       assert %Chat.Envelope{
                payload: {:message_delivered, %Chat.MessageDelivered{sender_id: "system"}}
-             } = Chat.Envelope.decode(pushed)
+             } = Chat.Envelope.decode(pushed_payload)
     end
   end
 end
