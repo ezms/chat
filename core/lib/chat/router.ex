@@ -6,6 +6,7 @@ defmodule Chat.Router do
   end
 
   get("/health", Chat.Http.HealthController, :check)
+  post("/admin/system-message", Chat.Http.AdminController, :system_message)
 
   scope "/", Chat do
     pipe_through(:api_auth)

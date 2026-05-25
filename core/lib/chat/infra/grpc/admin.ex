@@ -45,7 +45,7 @@ defmodule Chat.Infra.Grpc.Admin do
            }}
       })
 
-    Chat.Endpoint.broadcast!("room:#{room_id}", "message", payload)
+    Chat.Endpoint.broadcast!("room:#{room_id}", "message", {:binary, payload})
     %SystemAck{}
   end
 end
