@@ -135,6 +135,7 @@ defmodule Chat.Domain.Messaging.RoomChannel do
          }),
          socket.assigns
        )}
+    )
 
     {:noreply, socket}
   end
