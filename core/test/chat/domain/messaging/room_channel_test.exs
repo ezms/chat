@@ -7,8 +7,8 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
   @secret "test_secret_key_base_must_be_at_least_64_chars_long_xxxxxxxxxxxxxxx"
   @signer Joken.Signer.create("HS256", @secret)
 
-  defp decode_envelope({:binary, data}), do: decode_envelope(data)
-  defp decode_envelope(data), do: decode_envelope(data)
+  defp decode_envelope({:binary, data}), do: Chat.Envelope.decode(data)
+  defp decode_envelope(data), do: Chat.Envelope.decode(data)
 
   defp make_token(user_id, room_ids) do
     {:ok, token, _} =
