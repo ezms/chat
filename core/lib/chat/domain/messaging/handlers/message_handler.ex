@@ -3,6 +3,7 @@ defmodule Chat.Domain.Messaging.Handlers.MessageHandler do
   alias Chat.{SendMessage, MessageDelivered, SendFile, FileDelivered, Ack}
   alias Chat.Infra.Messaging.{MessageStore, AckStore}
   alias Chat.Infra.Queue.Publisher
+  alias Chat.Infra.Gateway.WebhookNotifier
 
   def handle(%SendMessage{room_id: room_id, content: content}, %{user_id: sender_id}) do
     case MessageStore.insert(room_id, sender_id, content) do
@@ -22,6 +23,8 @@ defmodule Chat.Domain.Messaging.Handlers.MessageHandler do
           sequence_number: sequence_number,
           inserted_at: now
         })
+
+        WebhookNotifier.notify(room_id, sender_id, content, sequence_number)
 
         {:broadcast,
          Envelope.encode(%Envelope{

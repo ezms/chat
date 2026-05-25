@@ -36,4 +36,7 @@ if config_env() == :prod do
   config :core, :meilisearch_key, System.get_env("MEILISEARCH_KEY")
 
   config :core, :grpc_port, String.to_integer(System.get_env("GRPC_PORT", "50051"))
+
+  config :core, :gateway_webhook_url, System.get_env("GATEWAY_WEBHOOK_URL")
+  config :core, :gateway_webhook_secret, System.get_env("GATEWAY_WEBHOOK_SECRET")
 end
