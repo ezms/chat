@@ -142,7 +142,13 @@ defmodule Chat.Domain.Messaging.RoomChannel do
 
   @impl true
   def handle_in("message", raw_payload, socket) do
-    with {:ok, payload} <- security().decode(raw_payload, socket.assigns) do
+    raw =
+      case raw_payload do
+        {:binary, data} -> data
+        data -> data
+      end
+
+    with {:ok, payload} <- security().decode(raw, socket.assigns) do
       payload
       |> Envelope.decode()
       |> dispatch(socket)
