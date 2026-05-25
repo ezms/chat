@@ -16,7 +16,10 @@ RUN MIX_ENV=prod mix release
 
 FROM alpine:3.20 AS runner
 
-RUN apk add --no-cache bash libstdc++ openssl ncurses-libs
+RUN apk add --no-cache bash libstdc++ ncurses-libs
+
+COPY --from=builder /usr/lib/libssl.so* /usr/lib/
+COPY --from=builder /usr/lib/libcrypto.so* /usr/lib/
 
 WORKDIR /app
 
