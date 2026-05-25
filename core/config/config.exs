@@ -1,7 +1,9 @@
 import Config
 
 config :core, auth_module: Chat.Infra.Auth.Default
-config :core, Chat.Endpoint, pubsub_server: Chat.PubSub
+config :core, Chat.Endpoint,
+  adapter: Bandit.PhoenixAdapter,
+  pubsub_server: Chat.PubSub
 config :core, :meilisearch_url, System.get_env("MEILISEARCH_URL")
 config :core, :meilisearch_key, System.get_env("MEILISEARCH_KEY")
 
