@@ -15,12 +15,13 @@ defmodule Chat.Infra.Gateway.WebhookNotifier do
   defp call(url, secret, room_id, sender_id, content, sequence_number) do
     text = if String.valid?(content), do: content, else: Base.encode64(content)
 
-    body = Jason.encode!(%{
-      room_id: room_id,
-      sender_id: sender_id,
-      content: text,
-      sequence_number: sequence_number
-    })
+    body =
+      Jason.encode!(%{
+        room_id: room_id,
+        sender_id: sender_id,
+        content: text,
+        sequence_number: sequence_number
+      })
 
     :hackney.request(
       :post,
