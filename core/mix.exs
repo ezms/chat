@@ -52,6 +52,7 @@ defmodule Chat.Core.MixProject do
       {:grpc, "~> 0.9"},
       {:ex_aws, "~> 2.5"},
       {:ex_aws_s3, "~> 2.5"},
+      {:bandit, "~> 1.0"},
       {:hackney, "~> 1.20"},
       {:sweet_xml, "~> 0.7"},
       {:excoveralls, "~> 0.18", only: :test}
