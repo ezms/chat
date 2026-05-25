@@ -76,7 +76,7 @@ defmodule Chat.Domain.Messaging.RoomChannel do
       {:ok, messages} ->
         Enum.each(messages, fn msg ->
           envelope = build_replay_envelope(msg)
-          push(socket, "message", security().encode(envelope, socket.assigns))
+          push(socket, "message", {:binary, security().encode(envelope, socket.assigns)})
         end)
 
       {:error, _} ->
@@ -128,13 +128,13 @@ defmodule Chat.Domain.Messaging.RoomChannel do
     push(
       socket,
       "message",
-      security().encode(
-        Envelope.encode(%Envelope{
-          payload: {:presence_state, %PresenceState{user_ids: current_users}}
-        }),
-        socket.assigns
-      )
-    )
+      {:binary,
+       security().encode(
+         Envelope.encode(%Envelope{
+           payload: {:presence_state, %PresenceState{user_ids: current_users}}
+         }),
+         socket.assigns
+       )}
 
     {:noreply, socket}
   end
@@ -204,20 +204,20 @@ defmodule Chat.Domain.Messaging.RoomChannel do
   defp dispatch(_, _socket), do: {:noreply}
 
   defp apply_result({:broadcast, encoded}, socket) do
-    broadcast!(socket, "message", security().encode(encoded, socket.assigns))
+    broadcast!(socket, "message", {:binary, security().encode(encoded, socket.assigns)})
     {:noreply, socket}
   end
 
   defp apply_result({:broadcast_many, encoded_list}, socket) do
     Enum.each(encoded_list, fn enc ->
-      broadcast!(socket, "message", security().encode(enc, socket.assigns))
+      broadcast!(socket, "message", {:binary, security().encode(enc, socket.assigns)})
     end)
 
     {:noreply, socket}
   end
 
   defp apply_result({:reply, encoded}, socket) do
-    {:reply, {:ok, security().encode(encoded, socket.assigns)}, socket}
+    {:reply, {:ok, {:binary, security().encode(encoded, socket.assigns)}}, socket}
   end
 
   defp apply_result({:noreply}, socket), do: {:noreply, socket}
