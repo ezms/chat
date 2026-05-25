@@ -7,6 +7,9 @@ defmodule Chat.Domain.PresenceTest do
   @secret "test_secret_key_base_must_be_at_least_64_chars_long_xxxxxxxxxxxxxxx"
   @signer Joken.Signer.create("HS256", @secret)
 
+  defp decode_envelope({:binary, data}), do: decode_envelope(data)
+  defp decode_envelope(data), do: decode_envelope(data)
+
   defp make_token(user_id, room_ids) do
     {:ok, token, _} =
       Joken.encode_and_sign(%{"sub" => user_id, "room_ids" => room_ids}, @signer)
@@ -28,7 +31,7 @@ defmodule Chat.Domain.PresenceTest do
     assert_push("message", payload)
 
     assert %Chat.Envelope{payload: {:presence_state, %Chat.PresenceState{user_ids: user_ids}}} =
-             Chat.Envelope.decode(payload)
+             decode_envelope(payload)
 
     assert "user_1" in user_ids
   end
@@ -41,7 +44,7 @@ defmodule Chat.Domain.PresenceTest do
     {:ok, _, _} = subscribe_and_join(conn, "room:#{room_id}")
 
     assert_push("message", payload)
-    assert %Chat.Envelope{payload: {:presence_state, _}} = Chat.Envelope.decode(payload)
+    assert %Chat.Envelope{payload: {:presence_state, _}} = decode_envelope(payload)
 
     refute_push("message", _)
   end
@@ -59,7 +62,7 @@ defmodule Chat.Domain.PresenceTest do
     assert_push("message", user_b_payload)
 
     assert %Chat.Envelope{payload: {:presence_state, %Chat.PresenceState{user_ids: user_b_ids}}} =
-             Chat.Envelope.decode(user_b_payload)
+             decode_envelope(user_b_payload)
 
     assert "user_b" in user_b_ids
 
@@ -67,7 +70,7 @@ defmodule Chat.Domain.PresenceTest do
 
     assert %Chat.Envelope{
              payload: {:presence_state, %Chat.PresenceState{user_ids: user_a_ids}}
-           } = Chat.Envelope.decode(user_a_diff)
+           } = decode_envelope(user_a_diff)
 
     assert "user_a" in user_a_ids
     assert "user_b" in user_a_ids
@@ -96,6 +99,6 @@ defmodule Chat.Domain.PresenceTest do
 
     assert %Chat.Envelope{
              payload: {:typing_event, %Chat.TypingEvent{user_id: "user_1", is_typing: true}}
-           } = Chat.Envelope.decode(broadcast)
+           } = decode_envelope(broadcast)
   end
 end

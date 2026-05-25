@@ -7,6 +7,9 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
   @secret "test_secret_key_base_must_be_at_least_64_chars_long_xxxxxxxxxxxxxxx"
   @signer Joken.Signer.create("HS256", @secret)
 
+  defp decode_envelope({:binary, data}), do: decode_envelope(data)
+  defp decode_envelope(data), do: decode_envelope(data)
+
   defp make_token(user_id, room_ids) do
     {:ok, token, _} =
       Joken.encode_and_sign(%{"sub" => user_id, "room_ids" => room_ids}, @signer)
@@ -40,7 +43,7 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
     payload = Chat.Envelope.encode(%Chat.Envelope{payload: {:ping, %Chat.Ping{}}})
     ref = push(socket, "message", payload)
     assert_reply(ref, :ok, response)
-    assert %Chat.Envelope{payload: {:pong, %Chat.Pong{}}} = Chat.Envelope.decode(response)
+    assert %Chat.Envelope{payload: {:pong, %Chat.Pong{}}} = decode_envelope(response)
   end
 
   test "ignores server-side envelope types (catch-all dispatch)", %{socket: socket} do
@@ -75,7 +78,7 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
     assert_broadcast("message", broadcast)
 
     assert %Chat.Envelope{payload: {:message_delivered, %Chat.MessageDelivered{}}} =
-             Chat.Envelope.decode(broadcast)
+             decode_envelope(broadcast)
   end
 
   test "replays missed messages on reconnect with last_sequence", %{socket: socket} do
@@ -143,7 +146,7 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
       Enum.find_value(1..20, fn _ ->
         receive do
           %Phoenix.Socket.Message{event: "message", payload: p} ->
-            if match?(%Chat.Envelope{payload: {:file_delivered, _}}, Chat.Envelope.decode(p)),
+            if match?(%Chat.Envelope{payload: {:file_delivered, _}}, decode_envelope(p)),
               do: p
 
           _ ->
@@ -154,7 +157,7 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
       end)
 
     assert %Chat.Envelope{payload: {:file_delivered, %Chat.FileDelivered{filename: "replay.jpg"}}} =
-             Chat.Envelope.decode(replayed)
+             decode_envelope(replayed)
   end
 
   test "replays missed messages via stored ack on reconnect" do
@@ -202,7 +205,7 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
     assert_broadcast("message", broadcast)
 
     assert %Chat.Envelope{payload: {:reaction_update, %Chat.ReactionUpdate{removed: false}}} =
-             Chat.Envelope.decode(broadcast)
+             decode_envelope(broadcast)
   end
 
   test "routes remove_reaction through dispatch and broadcasts ReactionUpdate removed", %{
@@ -217,7 +220,7 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
     assert_broadcast("message", broadcast)
 
     assert %Chat.Envelope{payload: {:reaction_update, %Chat.ReactionUpdate{removed: true}}} =
-             Chat.Envelope.decode(broadcast)
+             decode_envelope(broadcast)
   end
 
   test "routes read_receipt through dispatch and broadcasts ReadUpdate", %{socket: socket} do
@@ -230,7 +233,7 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
     assert_broadcast("message", broadcast)
 
     assert %Chat.Envelope{payload: {:read_update, %Chat.ReadUpdate{}}} =
-             Chat.Envelope.decode(broadcast)
+             decode_envelope(broadcast)
   end
 
   test "routes send_reply through dispatch and broadcasts ReplyDelivered + ThreadUpdate", %{
@@ -246,7 +249,7 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
 
     %Chat.Envelope{
       payload: {:message_delivered, %Chat.MessageDelivered{sequence_number: parent_seq}}
-    } = Chat.Envelope.decode(delivered_raw)
+    } = decode_envelope(delivered_raw)
 
     reply_payload =
       Chat.Envelope.encode(%Chat.Envelope{
@@ -262,8 +265,8 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
     push(socket, "message", reply_payload)
     assert_broadcast("message", reply_raw)
     assert_broadcast("message", thread_raw)
-    assert %Chat.Envelope{payload: {:reply_delivered, _}} = Chat.Envelope.decode(reply_raw)
-    assert %Chat.Envelope{payload: {:thread_update, _}} = Chat.Envelope.decode(thread_raw)
+    assert %Chat.Envelope{payload: {:reply_delivered, _}} = decode_envelope(reply_raw)
+    assert %Chat.Envelope{payload: {:thread_update, _}} = decode_envelope(thread_raw)
   end
 
   test "routes typing_event through dispatch and broadcasts TypingEvent", %{socket: socket} do
@@ -276,7 +279,7 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
     assert_broadcast("message", broadcast)
 
     assert %Chat.Envelope{payload: {:typing_event, %Chat.TypingEvent{is_typing: true}}} =
-             Chat.Envelope.decode(broadcast)
+             decode_envelope(broadcast)
   end
 
   test "terminates cleanly on disconnect", %{socket: socket} do
