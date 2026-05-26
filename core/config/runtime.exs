@@ -5,9 +5,17 @@ if config_env() == :prod do
     System.get_env("SECRET_KEY_BASE") ||
       raise "environment variable SECRET_KEY_BASE is missing"
 
+  check_origin =
+    case System.get_env("ALLOWED_ORIGINS") do
+      nil -> true
+      "*" -> false
+      origins -> String.split(origins, ",", trim: true)
+    end
+
   config :core, Chat.Endpoint,
     http: [port: String.to_integer(System.get_env("PORT", "4000"))],
     secret_key_base: secret_key_base,
+    check_origin: check_origin,
     server: true
 
   config :core, :secret_key_base, secret_key_base
