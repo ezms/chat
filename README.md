@@ -414,6 +414,112 @@ To use S3, R2, Oracle Storage or any other provider, implement the behaviour and
 config :core, :storage_module, MyApp.S3Storage
 ```
 
+### Storage Adapters
+
+The service delegates all persistence to pluggable store contracts. Each store has a default implementation included in the image — replace any of them by implementing the corresponding behaviour and setting it in config.
+
+**Message store (ScyllaDB by default)**
+
+```elixir
+defmodule Chat.Contracts.MessageStore do
+  @callback insert(room_id :: String.t(), sender_id :: String.t(), content :: binary()) ::
+              {:ok, sequence_number :: integer()} | {:error, term()}
+
+  @callback insert_file(room_id :: String.t(), sender_id :: String.t(), file_key :: String.t(),
+              filename :: String.t(), content_type :: String.t(), size :: integer()) ::
+              {:ok, sequence_number :: integer()} | {:error, term()}
+end
+```
+
+**History store (ScyllaDB by default)**
+
+```elixir
+defmodule Chat.Contracts.HistoryStore do
+  @callback get(room_id :: String.t(), after_sequence :: integer(), limit :: integer()) ::
+              {:ok, list(map())} | {:error, term()}
+end
+```
+
+**Reaction store (ScyllaDB by default)**
+
+```elixir
+defmodule Chat.Contracts.ReactionStore do
+  @callback upsert(room_id :: String.t(), sequence_number :: integer(),
+              user_id :: String.t(), emoji :: String.t()) :: :ok | {:error, term()}
+
+  @callback delete(room_id :: String.t(), sequence_number :: integer(),
+              user_id :: String.t()) :: :ok | {:error, term()}
+end
+```
+
+**Thread store (ScyllaDB by default)**
+
+```elixir
+defmodule Chat.Contracts.ThreadStore do
+  @callback insert_reply(room_id :: String.t(), parent_sequence_number :: integer(),
+              sender_id :: String.t(), content :: binary()) ::
+              {:ok, sequence_number :: integer()} | {:error, term()}
+
+  @callback count_replies(room_id :: String.t(), parent_sequence_number :: integer()) ::
+              {:ok, integer()} | {:error, term()}
+end
+```
+
+**Ack store (Redis by default)**
+
+```elixir
+defmodule Chat.Contracts.AckStore do
+  @callback confirm(user_id :: String.t(), room_id :: String.t(), sequence_number :: integer()) ::
+              :ok | {:error, term()}
+
+  @callback last_ack(user_id :: String.t(), room_id :: String.t()) ::
+              {:ok, integer()} | {:error, term()}
+end
+```
+
+**Read store (Redis by default)**
+
+```elixir
+defmodule Chat.Contracts.ReadStore do
+  @callback mark_read(user_id :: String.t(), room_id :: String.t(), sequence_number :: integer()) ::
+              :ok | {:error, term()}
+
+  @callback last_read(user_id :: String.t(), room_id :: String.t()) ::
+              {:ok, integer()} | {:error, term()}
+end
+```
+
+**Default implementations**
+
+| Contract | Default | Backend |
+|---|---|---|
+| `Chat.Contracts.MessageStore` | `Chat.Infra.Scylla.MessageStore` | ScyllaDB |
+| `Chat.Contracts.HistoryStore` | `Chat.Infra.Scylla.HistoryStore` | ScyllaDB |
+| `Chat.Contracts.ReactionStore` | `Chat.Infra.Scylla.ReactionStore` | ScyllaDB |
+| `Chat.Contracts.ThreadStore` | `Chat.Infra.Scylla.ThreadStore` | ScyllaDB |
+| `Chat.Contracts.AckStore` | `Chat.Infra.Redis.AckStore` | Redis |
+| `Chat.Contracts.ReadStore` | `Chat.Infra.Redis.ReadStore` | Redis |
+
+**Using a custom backend**
+
+Implement the relevant behaviours in your own package, then configure them:
+
+```elixir
+# config/config.exs (or runtime.exs)
+config :core, message_store: MyApp.DynamoMessageStore
+config :core, history_store: MyApp.DynamoHistoryStore
+config :core, reaction_store: MyApp.DynamoReactionStore
+config :core, thread_store: MyApp.DynamoThreadStore
+config :core, ack_store: MyApp.PostgresAckStore
+config :core, read_store: MyApp.PostgresReadStore
+```
+
+You may replace any subset — for example, keep the ScyllaDB stores and only swap the Redis stores for a Postgres implementation. Each contract is independent.
+
+> **Note on sequence numbers:** `MessageStore` and `ThreadStore` implementations are responsible for generating monotonically increasing `sequence_number` values internally. The default ScyllaDB implementation uses Redis `INCR` for this. Alternative implementations should use the atomic counter mechanism native to their backend (e.g. PostgreSQL sequences, DynamoDB atomic counters).
+
+---
+
 ### Message Broker
 
 If your system already runs a RabbitMQ instance, point the service to it via `RABBITMQ_URL`. No code changes are required — the service connects to whichever broker is configured.
