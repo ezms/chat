@@ -1,10 +1,10 @@
-defmodule Chat.Infra.Database.Migrator do
+defmodule Chat.Infra.Scylla.Migrator do
   require Logger
 
   def run(conn) do
     wait_for_connection(conn, 10)
 
-    Enum.each(Chat.Infra.Database.Schema.statements(), fn statement ->
+    Enum.each(Chat.Infra.Scylla.Schema.statements(), fn statement ->
       case Xandra.execute(conn, statement) do
         {:ok, _} ->
           :ok

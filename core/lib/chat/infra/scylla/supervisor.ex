@@ -1,4 +1,4 @@
-defmodule Chat.Infra.Database.Supervisor do
+defmodule Chat.Infra.Scylla.Supervisor do
   use Supervisor
 
   def start_link(options) do
@@ -10,7 +10,7 @@ defmodule Chat.Infra.Database.Supervisor do
     children = [
       {Xandra,
        name: :xandra, nodes: [Application.get_env(:core, :scylladb_url, "127.0.0.1:9042")]},
-      {Task, fn -> Chat.Infra.Database.Migrator.run(:xandra) end}
+      {Task, fn -> Chat.Infra.Scylla.Migrator.run(:xandra) end}
     ]
 
     Supervisor.init(children, strategy: :rest_for_one)

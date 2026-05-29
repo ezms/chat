@@ -177,7 +177,7 @@ defmodule Chat.Domain.Messaging.RoomChannelTest do
 
     push(sender_socket, "message", first_payload)
 
-    :ok = Chat.Infra.Messaging.AckStore.confirm(user_offline, room_id, 1)
+    :ok = Chat.Infra.Redis.AckStore.confirm(user_offline, room_id, 1)
 
     missed_payload =
       Chat.Envelope.encode(%Chat.Envelope{

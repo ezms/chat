@@ -1,8 +1,8 @@
-defmodule Chat.Infra.Messaging.MessageStoreTest do
+defmodule Chat.Infra.Scylla.MessageStoreTest do
   use ExUnit.Case
 
-  alias Chat.Infra.Messaging.MessageStore
-  alias Chat.Infra.Messaging.HistoryStore
+  alias Chat.Infra.Scylla.MessageStore
+  alias Chat.Infra.Scylla.HistoryStore
 
   setup do
     %{room_id: "room_#{System.unique_integer([:positive])}"}

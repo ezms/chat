@@ -2,7 +2,7 @@ defmodule Chat.Domain.Messaging.Handlers.ThreadHandlerTest do
   use ExUnit.Case
 
   alias Chat.Domain.Messaging.Handlers.ThreadHandler
-  alias Chat.Infra.Messaging.MessageStore
+  alias Chat.Infra.Scylla.MessageStore
   alias Chat.Envelope
 
   setup do

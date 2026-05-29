@@ -38,7 +38,7 @@ defmodule Chat.Infra.Grpc.AdminTest do
       push(socket, "message", payload)
       Process.sleep(50)
 
-      {:ok, messages} = Chat.Infra.Messaging.HistoryStore.get(room_id, 0)
+      {:ok, messages} = Chat.Infra.Scylla.HistoryStore.get(room_id, 0)
 
       assert length(messages) >= 1
       assert hd(messages)["room_id"] == room_id

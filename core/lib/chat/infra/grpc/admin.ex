@@ -5,13 +5,13 @@ defmodule Chat.Infra.Grpc.Admin do
   alias Chat.Admin.SystemAck
   alias Chat.Envelope
   alias Chat.MessageDelivered
-  alias Chat.Infra.Messaging.HistoryStore
+  defp history_store, do: Application.get_env(:core, :history_store, Chat.Infra.Scylla.HistoryStore)
 
   def get_history(
         %Chat.Admin.HistoryRequest{room_id: room_id, from_sequence: from_sequence},
         stream
       ) do
-    case HistoryStore.get(room_id, from_sequence) do
+    case history_store().get(room_id, from_sequence) do
       {:ok, messages} ->
         Enum.each(messages, fn msg ->
           GRPC.Server.send_reply(stream, %HistoryMessage{

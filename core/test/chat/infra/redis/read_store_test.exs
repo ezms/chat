@@ -1,7 +1,7 @@
-defmodule Chat.Infra.Messaging.ReadStoreTest do
+defmodule Chat.Infra.Redis.ReadStoreTest do
   use ExUnit.Case
 
-  alias Chat.Infra.Messaging.ReadStore
+  alias Chat.Infra.Redis.ReadStore
 
   setup do
     user_id = "user_#{System.unique_integer([:positive])}"

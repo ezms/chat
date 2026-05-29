@@ -1,8 +1,9 @@
 defmodule Chat.Domain.Messaging.Handlers.ThreadHandler do
   alias Chat.Envelope
   alias Chat.{SendReply, ReplyDelivered, ThreadUpdate}
-  alias Chat.Infra.Messaging.ThreadStore
   alias Chat.Infra.Queue.Publisher
+
+  defp thread_store, do: Application.get_env(:core, :thread_store, Chat.Infra.Scylla.ThreadStore)
 
   def handle(
         %SendReply{
@@ -13,8 +14,8 @@ defmodule Chat.Domain.Messaging.Handlers.ThreadHandler do
         %{user_id: sender_id}
       ) do
     with {:ok, sequence_number} <-
-           ThreadStore.insert_reply(room_id, parent_seq, sender_id, content),
-         {:ok, reply_count} <- ThreadStore.count_replies(room_id, parent_seq) do
+           thread_store().insert_reply(room_id, parent_seq, sender_id, content),
+         {:ok, reply_count} <- thread_store().count_replies(room_id, parent_seq) do
       Publisher.publish("push.notify", %{
         room_id: room_id,
         sender_id: sender_id,

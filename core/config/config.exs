@@ -2,6 +2,13 @@ import Config
 
 config :core, auth_module: Chat.Infra.Auth.Default
 
+config :core, message_store: Chat.Infra.Scylla.MessageStore
+config :core, history_store: Chat.Infra.Scylla.HistoryStore
+config :core, reaction_store: Chat.Infra.Scylla.ReactionStore
+config :core, thread_store: Chat.Infra.Scylla.ThreadStore
+config :core, ack_store: Chat.Infra.Redis.AckStore
+config :core, read_store: Chat.Infra.Redis.ReadStore
+
 config :core, Chat.Endpoint,
   adapter: Bandit.PhoenixAdapter,
   pubsub_server: Chat.PubSub

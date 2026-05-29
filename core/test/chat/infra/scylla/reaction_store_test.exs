@@ -1,8 +1,8 @@
-defmodule Chat.Infra.Messaging.ReactionStoreTest do
+defmodule Chat.Infra.Scylla.ReactionStoreTest do
   use ExUnit.Case
 
-  alias Chat.Infra.Messaging.ReactionStore
-  alias Chat.Infra.Messaging.MessageStore
+  alias Chat.Infra.Scylla.ReactionStore
+  alias Chat.Infra.Scylla.MessageStore
 
   setup do
     room_id = "room_#{System.unique_integer([:positive])}"

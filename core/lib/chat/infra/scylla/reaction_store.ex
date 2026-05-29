@@ -1,4 +1,6 @@
-defmodule Chat.Infra.Messaging.ReactionStore do
+defmodule Chat.Infra.Scylla.ReactionStore do
+  @behaviour Chat.Contracts.ReactionStore
+
   @upsert_query """
   INSERT INTO chat.reactions (room_id, sequence_number, user_id, emoji)
   VALUES (?, ?, ?, ?)
@@ -9,6 +11,7 @@ defmodule Chat.Infra.Messaging.ReactionStore do
   WHERE room_id = ? AND sequence_number = ? AND user_id = ?
   """
 
+  @impl true
   def upsert(room_id, sequence_number, user_id, emoji) do
     case Xandra.execute(:xandra, @upsert_query, [
            {"text", room_id},
@@ -21,6 +24,7 @@ defmodule Chat.Infra.Messaging.ReactionStore do
     end
   end
 
+  @impl true
   def delete(room_id, sequence_number, user_id) do
     case Xandra.execute(:xandra, @delete_query, [
            {"text", room_id},

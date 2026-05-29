@@ -7,7 +7,7 @@ defmodule Chat.Core do
 
     children =
       [
-        Chat.Infra.Database.Supervisor,
+        Chat.Infra.Scylla.Supervisor,
         Chat.Infra.Redis.Supervisor,
         Chat.Infra.Queue.Supervisor,
         {Phoenix.PubSub, name: Chat.PubSub},

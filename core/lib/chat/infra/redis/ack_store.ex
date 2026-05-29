@@ -1,4 +1,7 @@
-defmodule Chat.Infra.Messaging.AckStore do
+defmodule Chat.Infra.Redis.AckStore do
+  @behaviour Chat.Contracts.AckStore
+
+  @impl true
   def confirm(user_id, room_id, sequence_number) do
     case Redix.command(:redix, ["SET", "ack:#{user_id}:#{room_id}", sequence_number]) do
       {:ok, _} -> :ok
@@ -6,6 +9,7 @@ defmodule Chat.Infra.Messaging.AckStore do
     end
   end
 
+  @impl true
   def last_ack(user_id, room_id) do
     case Redix.command(:redix, ["GET", "ack:#{user_id}:#{room_id}"]) do
       {:ok, nil} -> {:ok, 0}

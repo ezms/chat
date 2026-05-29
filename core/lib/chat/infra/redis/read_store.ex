@@ -1,4 +1,7 @@
-defmodule Chat.Infra.Messaging.ReadStore do
+defmodule Chat.Infra.Redis.ReadStore do
+  @behaviour Chat.Contracts.ReadStore
+
+  @impl true
   def mark_read(user_id, room_id, sequence_number) do
     case Redix.command(:redix, ["SET", "read:#{user_id}:#{room_id}", sequence_number]) do
       {:ok, _} -> :ok
@@ -6,6 +9,7 @@ defmodule Chat.Infra.Messaging.ReadStore do
     end
   end
 
+  @impl true
   def last_read(user_id, room_id) do
     case Redix.command(:redix, ["GET", "read:#{user_id}:#{room_id}"]) do
       {:ok, nil} -> {:ok, 0}

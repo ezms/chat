@@ -2,7 +2,7 @@ defmodule Chat.Domain.Messaging.Handlers.ReactionHandlerTest do
   use ExUnit.Case
 
   alias Chat.Domain.Messaging.Handlers.ReactionHandler
-  alias Chat.Infra.Messaging.MessageStore
+  alias Chat.Infra.Scylla.MessageStore
   alias Chat.Envelope
 
   setup do
@@ -29,7 +29,7 @@ defmodule Chat.Domain.Messaging.Handlers.ReactionHandlerTest do
     seq: seq
   } do
     assigns = %{user_id: "reaction_user"}
-    :ok = Chat.Infra.Messaging.ReactionStore.upsert(room_id, seq, "reaction_user", "👎")
+    :ok = Chat.Infra.Scylla.ReactionStore.upsert(room_id, seq, "reaction_user", "👎")
 
     msg = %Chat.RemoveReaction{room_id: room_id, sequence_number: seq}
 

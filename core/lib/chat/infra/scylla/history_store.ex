@@ -1,4 +1,6 @@
-defmodule Chat.Infra.Messaging.HistoryStore do
+defmodule Chat.Infra.Scylla.HistoryStore do
+  @behaviour Chat.Contracts.HistoryStore
+
   @history_query """
   SELECT room_id, sequence_number, sender_id, content, inserted_at, file_key
   FROM chat.messages
@@ -7,6 +9,7 @@ defmodule Chat.Infra.Messaging.HistoryStore do
   LIMIT ?
   """
 
+  @impl true
   def get(room_id, after_sequence, limit \\ 50) do
     case Xandra.execute(:xandra, @history_query, [
            {"text", room_id},

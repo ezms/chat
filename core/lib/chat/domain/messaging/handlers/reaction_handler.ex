@@ -1,13 +1,14 @@
 defmodule Chat.Domain.Messaging.Handlers.ReactionHandler do
   alias Chat.Envelope
   alias Chat.{AddReaction, RemoveReaction, ReactionUpdate}
-  alias Chat.Infra.Messaging.ReactionStore
+
+  defp reaction_store, do: Application.get_env(:core, :reaction_store, Chat.Infra.Scylla.ReactionStore)
 
   def handle(
         %AddReaction{room_id: room_id, sequence_number: seq, emoji: emoji},
         %{user_id: user_id}
       ) do
-    :ok = ReactionStore.upsert(room_id, seq, user_id, emoji)
+    :ok = reaction_store().upsert(room_id, seq, user_id, emoji)
 
     {:broadcast,
      Envelope.encode(%Envelope{
@@ -24,7 +25,7 @@ defmodule Chat.Domain.Messaging.Handlers.ReactionHandler do
   end
 
   def handle(%RemoveReaction{room_id: room_id, sequence_number: seq}, %{user_id: user_id}) do
-    :ok = ReactionStore.delete(room_id, seq, user_id)
+    :ok = reaction_store().delete(room_id, seq, user_id)
 
     {:broadcast,
      Envelope.encode(%Envelope{

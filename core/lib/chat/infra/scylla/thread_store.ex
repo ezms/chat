@@ -1,4 +1,6 @@
-defmodule Chat.Infra.Messaging.ThreadStore do
+defmodule Chat.Infra.Scylla.ThreadStore do
+  @behaviour Chat.Contracts.ThreadStore
+
   @insert_query """
   INSERT INTO chat.thread_replies
     (room_id, parent_sequence_number, sequence_number, sender_id, content, inserted_at)
@@ -10,6 +12,7 @@ defmodule Chat.Infra.Messaging.ThreadStore do
   WHERE room_id = ? AND parent_sequence_number = ?
   """
 
+  @impl true
   def insert_reply(room_id, parent_sequence_number, sender_id, content) do
     with {:ok, sequence_number} <-
            Chat.Infra.Redis.Sequence.next("#{room_id}:thread:#{parent_sequence_number}"),
@@ -26,6 +29,7 @@ defmodule Chat.Infra.Messaging.ThreadStore do
     end
   end
 
+  @impl true
   def count_replies(room_id, parent_sequence_number) do
     case Xandra.execute(:xandra, @count_query, [
            {"text", room_id},

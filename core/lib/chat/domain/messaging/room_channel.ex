@@ -4,7 +4,6 @@ defmodule Chat.Domain.Messaging.RoomChannel do
   alias Chat.Envelope
   alias Chat.{Pong, TypingEvent, PresenceState, FileDelivered, MessageDelivered}
   alias Chat.Domain.Presence
-  alias Chat.Infra.Messaging.{HistoryStore, AckStore}
   alias Chat.Infra.Queue.Publisher
   alias Chat.Domain.Messaging.Handlers.MessageHandler
   alias Chat.Domain.Messaging.Handlers.ReactionHandler
@@ -15,6 +14,9 @@ defmodule Chat.Domain.Messaging.RoomChannel do
 
   defp security,
     do: Application.get_env(:core, :channel_security, Chat.Infra.ChannelSecurity.Passthrough)
+
+  defp history_store, do: Application.get_env(:core, :history_store, Chat.Infra.Scylla.HistoryStore)
+  defp ack_store, do: Application.get_env(:core, :ack_store, Chat.Infra.Redis.AckStore)
 
   @impl true
   def join("room:" <> room_id, %{"last_sequence" => last_sequence}, socket) do
@@ -48,7 +50,7 @@ defmodule Chat.Domain.Messaging.RoomChannel do
     replay_sequence =
       case last_sequence do
         nil ->
-          case AckStore.last_ack(user_id, room_id) do
+          case ack_store().last_ack(user_id, room_id) do
             {:ok, seq} when seq > 0 -> seq
             _ -> nil
           end
@@ -72,7 +74,7 @@ defmodule Chat.Domain.Messaging.RoomChannel do
 
   @impl true
   def handle_info({:replay, room_id, last_sequence}, socket) do
-    case HistoryStore.get(room_id, last_sequence) do
+    case history_store().get(room_id, last_sequence) do
       {:ok, messages} ->
         Enum.each(messages, fn msg ->
           envelope = build_replay_envelope(msg)

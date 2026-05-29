@@ -1,12 +1,14 @@
 defmodule Chat.Domain.Messaging.Handlers.MessageHandler do
   alias Chat.Envelope
   alias Chat.{SendMessage, MessageDelivered, SendFile, FileDelivered, Ack}
-  alias Chat.Infra.Messaging.{MessageStore, AckStore}
   alias Chat.Infra.Queue.Publisher
   alias Chat.Infra.Gateway.WebhookNotifier
 
+  defp message_store, do: Application.get_env(:core, :message_store, Chat.Infra.Scylla.MessageStore)
+  defp ack_store, do: Application.get_env(:core, :ack_store, Chat.Infra.Redis.AckStore)
+
   def handle(%SendMessage{room_id: room_id, content: content}, %{user_id: sender_id}) do
-    case MessageStore.insert(room_id, sender_id, content) do
+    case message_store().insert(room_id, sender_id, content) do
       {:ok, sequence_number} ->
         now = System.os_time(:millisecond)
 
@@ -54,7 +56,7 @@ defmodule Chat.Domain.Messaging.Handlers.MessageHandler do
         },
         %{user_id: sender_id}
       ) do
-    case MessageStore.insert_file(room_id, sender_id, file_key, filename, content_type, size) do
+    case message_store().insert_file(room_id, sender_id, file_key, filename, content_type, size) do
       {:ok, sequence_number} ->
         Publisher.publish("push.notify", %{
           room_id: room_id,
@@ -85,7 +87,7 @@ defmodule Chat.Domain.Messaging.Handlers.MessageHandler do
   end
 
   def handle(%Ack{room_id: room_id, sequence_number: sequence_number}, %{user_id: user_id}) do
-    :ok = AckStore.confirm(user_id, room_id, sequence_number)
+    :ok = ack_store().confirm(user_id, room_id, sequence_number)
     {:noreply}
   end
 end

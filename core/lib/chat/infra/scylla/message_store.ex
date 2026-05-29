@@ -1,4 +1,6 @@
-defmodule Chat.Infra.Messaging.MessageStore do
+defmodule Chat.Infra.Scylla.MessageStore do
+  @behaviour Chat.Contracts.MessageStore
+
   @insert_query """
   INSERT INTO chat.messages (room_id, sequence_number, sender_id, content, inserted_at)
   VALUES (?, ?, ?, ?, ?)
@@ -9,6 +11,7 @@ defmodule Chat.Infra.Messaging.MessageStore do
   VALUES (?, ?, ?, ?, ?, ?)
   """
 
+  @impl true
   def insert(room_id, sender_id, content) do
     with {:ok, sequence_number} <- Chat.Infra.Redis.Sequence.next(room_id),
          {:ok, _} <-
@@ -23,6 +26,7 @@ defmodule Chat.Infra.Messaging.MessageStore do
     end
   end
 
+  @impl true
   def insert_file(room_id, sender_id, file_key, filename, content_type, size) do
     meta = Jason.encode!(%{filename: filename, content_type: content_type, size: size})
 

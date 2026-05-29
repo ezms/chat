@@ -2,7 +2,7 @@ defmodule Chat.Domain.Messaging.Handlers.ReadHandlerTest do
   use ExUnit.Case
 
   alias Chat.Domain.Messaging.Handlers.ReadHandler
-  alias Chat.Infra.Messaging.ReadStore
+  alias Chat.Infra.Redis.ReadStore
   alias Chat.Envelope
 
   test "handle ReadReceipt returns broadcast with ReadUpdate" do

@@ -1,7 +1,7 @@
-defmodule Chat.Infra.Messaging.AckStoreTest do
+defmodule Chat.Infra.Redis.AckStoreTest do
   use ExUnit.Case
 
-  alias Chat.Infra.Messaging.AckStore
+  alias Chat.Infra.Redis.AckStore
 
   setup do
     user_id = "user_#{System.unique_integer([:positive])}"
