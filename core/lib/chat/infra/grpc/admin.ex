@@ -5,6 +5,7 @@ defmodule Chat.Infra.Grpc.Admin do
   alias Chat.Admin.SystemAck
   alias Chat.Envelope
   alias Chat.MessageDelivered
+
   defp history_store,
     do: Application.get_env(:core, :history_store, Chat.Infra.Scylla.HistoryStore)
 

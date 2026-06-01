@@ -17,6 +17,7 @@ defmodule Chat.Domain.Messaging.RoomChannel do
 
   defp history_store,
     do: Application.get_env(:core, :history_store, Chat.Infra.Scylla.HistoryStore)
+
   defp ack_store, do: Application.get_env(:core, :ack_store, Chat.Infra.Redis.AckStore)
 
   @impl true
