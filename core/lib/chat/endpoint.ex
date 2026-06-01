@@ -1,10 +1,11 @@
 defmodule Chat.Endpoint do
   use Phoenix.Endpoint, otp_app: :core
 
-  plug Plug.Parsers,
+  plug(Plug.Parsers,
     parsers: [:urlencoded, :json],
     pass: ["*/*"],
     json_decoder: Jason
+  )
 
   plug(Chat.Router)
 

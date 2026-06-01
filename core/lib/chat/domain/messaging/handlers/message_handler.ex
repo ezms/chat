@@ -4,7 +4,8 @@ defmodule Chat.Domain.Messaging.Handlers.MessageHandler do
   alias Chat.Infra.Queue.Publisher
   alias Chat.Infra.Gateway.WebhookNotifier
 
-  defp message_store, do: Application.get_env(:core, :message_store, Chat.Infra.Scylla.MessageStore)
+  defp message_store,
+    do: Application.get_env(:core, :message_store, Chat.Infra.Scylla.MessageStore)
   defp ack_store, do: Application.get_env(:core, :ack_store, Chat.Infra.Redis.AckStore)
 
   def handle(%SendMessage{room_id: room_id, content: content}, %{user_id: sender_id}) do

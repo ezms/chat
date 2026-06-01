@@ -2,7 +2,8 @@ defmodule Chat.Domain.Messaging.Handlers.ReactionHandler do
   alias Chat.Envelope
   alias Chat.{AddReaction, RemoveReaction, ReactionUpdate}
 
-  defp reaction_store, do: Application.get_env(:core, :reaction_store, Chat.Infra.Scylla.ReactionStore)
+  defp reaction_store,
+    do: Application.get_env(:core, :reaction_store, Chat.Infra.Scylla.ReactionStore)
 
   def handle(
         %AddReaction{room_id: room_id, sequence_number: seq, emoji: emoji},
