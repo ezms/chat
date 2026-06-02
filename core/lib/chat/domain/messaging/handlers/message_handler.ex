@@ -67,6 +67,8 @@ defmodule Chat.Domain.Messaging.Handlers.MessageHandler do
           inserted_at: System.os_time(:millisecond)
         })
 
+        WebhookNotifier.notify_file(room_id, sender_id, file_key, filename, content_type, sequence_number)
+
         {:broadcast,
          Envelope.encode(%Envelope{
            payload:
