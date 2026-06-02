@@ -9,7 +9,9 @@ defmodule Chat.Infra.Gateway.WebhookNotifier do
 
   def notify_file(room_id, sender_id, file_key, filename, mime_type, sequence_number) do
     with_config(fn url, secret ->
-      Task.start(fn -> call_file(url, secret, room_id, sender_id, file_key, filename, mime_type, sequence_number) end)
+      Task.start(fn ->
+        call_file(url, secret, room_id, sender_id, file_key, filename, mime_type, sequence_number)
+      end)
     end)
   end
 
