@@ -9,6 +9,7 @@ RUN MIX_ENV=prod mix deps.get --only prod
 RUN MIX_ENV=prod mix deps.compile
 
 COPY core/ .
+RUN MIX_ENV=prod mix deps.get --only prod
 RUN MIX_ENV=prod mix compile
 RUN MIX_ENV=prod mix release
 
