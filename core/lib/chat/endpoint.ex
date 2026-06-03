@@ -2,7 +2,7 @@ defmodule Chat.Endpoint do
   use Phoenix.Endpoint, otp_app: :core
 
   plug(Corsica,
-    origins: &Chat.Endpoint.allowed_origins/0,
+    origins: {Chat.Endpoint, :allowed_origin?, []},
     allow_headers: ["authorization", "content-type"],
     allow_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
   )
@@ -20,10 +20,10 @@ defmodule Chat.Endpoint do
     longpoll: false
   )
 
-  def allowed_origins do
+  def allowed_origin?(origin) do
     case System.get_env("ALLOWED_ORIGINS", "*") do
-      "*" -> "*"
-      origins -> String.split(origins, ",", trim: true)
+      "*" -> true
+      origins -> origin in String.split(origins, ",", trim: true)
     end
   end
 end
