@@ -1,10 +1,11 @@
 defmodule Chat.Endpoint do
   use Phoenix.Endpoint, otp_app: :core
 
-  plug Corsica,
+  plug(Corsica,
     origins: &Chat.Endpoint.allowed_origins/0,
     allow_headers: ["authorization", "content-type"],
     allow_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+  )
 
   plug(Plug.Parsers,
     parsers: [:urlencoded, :json],
