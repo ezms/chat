@@ -55,6 +55,7 @@ defmodule Chat.Core.MixProject do
       {:bandit, "~> 1.0"},
       {:hackney, "~> 1.20"},
       {:sweet_xml, "~> 0.7"},
+      {:corsica, "~> 2.1"},
       {:excoveralls, "~> 0.18", only: :test}
     ]
   end
