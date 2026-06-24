@@ -1,0 +1,27 @@
+{
+    "name": "chat-backend",
+    "version": "0.1.0",
+    "type": "module",
+    "scripts": {
+        "dev": "bun run --watch src/index.ts",
+        "start": "bun run src/index.ts",
+        "typecheck": "tsc --noEmit",
+        "lint": "eslint .",
+        "format": "prettier --write .",
+        "format:check": "prettier --check ."
+    },
+    "dependencies": {
+        "elysia": "^1.2.0",
+        "@elysiajs/cors": "^1.2.0",
+        "@elysiajs/jwt": "^1.2.0"
+    },
+    "devDependencies": {
+        "@typescript-eslint/eslint-plugin": "^8.62.0",
+        "@typescript-eslint/parser": "^8.62.0",
+        "bun-types": "latest",
+        "eslint": "^10.5.0",
+        "eslint-config-prettier": "^10.1.8",
+        "prettier": "^3.8.4",
+        "typescript": "^5.0.0"
+    }
+}
