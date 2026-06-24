@@ -1,0 +1,26 @@
+{
+    "name": "Chat — Core (Elixir)",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": "../.."
+    },
+    "features": {
+        "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "JakeBecker.elixir-ls",
+                "zxh404.vscode-proto3",
+                "esbenp.prettier-vscode"
+            ],
+            "settings": {
+                "editor.formatOnSave": true,
+                "[elixir]": {
+                    "editor.defaultFormatter": "JakeBecker.elixir-ls"
+                }
+            }
+        }
+    },
+    "remoteUser": "root"
+}
