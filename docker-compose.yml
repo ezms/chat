@@ -20,8 +20,6 @@ services:
     image: redis:7.4-alpine
     command: redis-server --appendonly yes
     profiles: [local-cache]
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -87,26 +85,18 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: ./demo/backend
       dockerfile: Dockerfile
     profiles: [demo]
     ports:
       - "3000:3000"
     environment:
       CORE_URL: ${CORE_URL:-http://core:4000}
-      SCYLLADB_URL: ${SCYLLADB_URL:-scylladb:9042}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
-    depends_on:
-      scylladb:
-        condition: service_healthy
-        required: false
-      redis:
-        condition: service_healthy
-        required: false
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:?SECRET_KEY_BASE is required}
 
   frontend:
     build:
-      context: ./frontend
+      context: ./demo/frontend
       dockerfile: Dockerfile
     profiles: [demo]
     ports:
@@ -121,7 +111,7 @@ services:
 
   core:
     build:
-      context: ./core
+      context: .
       dockerfile: Dockerfile
     ports:
       - "4000:4000"
