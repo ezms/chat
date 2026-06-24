@@ -1,0 +1,12 @@
+{
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "strict": true,
+        "verbatimModuleSyntax": true,
+        "types": ["vite/client"]
+    },
+    "include": ["src/**/*"],
+    "references": [{ "path": "./tsconfig.node.json" }]
+}
